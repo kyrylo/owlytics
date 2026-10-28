@@ -84,6 +84,18 @@ pub fn router(db: Database, config: Config) -> Router {
             ),
         )
         .route(
+            crate::geography::country_sprite_url(),
+            asset_with_cache(
+                "image/svg+xml",
+                crate::geography::country_sprite(),
+                "public, max-age=31536000, immutable",
+            ),
+        )
+        .route(
+            "/assets/country-shapes.svg",
+            asset("image/svg+xml", crate::geography::country_sprite()),
+        )
+        .route(
             "/assets/logo.svg",
             asset("image/svg+xml", include_str!("../assets/logo.svg")),
         )
@@ -100,6 +112,14 @@ pub fn router(db: Database, config: Config) -> Router {
 // Cache only public, embedded assets. Revalidate on each use so an upgrade
 // cannot leave a browser showing an old palette or running an old tracker.
 fn asset(content_type: &'static str, body: &'static str) -> axum::routing::MethodRouter<App> {
+    asset_with_cache(content_type, body, "public, no-cache")
+}
+
+fn asset_with_cache(
+    content_type: &'static str,
+    body: &'static str,
+    cache_control: &'static str,
+) -> axum::routing::MethodRouter<App> {
     let etag = format!("\"{}\"", auth::digest(body));
     get(move |headers: HeaderMap| {
         let etag = etag.clone();
@@ -121,7 +141,7 @@ fn asset(content_type: &'static str, body: &'static str) -> axum::routing::Metho
                 .insert(header::ETAG, etag.parse().expect("hex digest"));
             response.headers_mut().insert(
                 header::CACHE_CONTROL,
-                HeaderValue::from_static("public, no-cache"),
+                HeaderValue::from_static(cache_control),
             );
             response
         }

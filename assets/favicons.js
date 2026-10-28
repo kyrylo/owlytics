@@ -14,9 +14,14 @@
   };
   let queue = Promise.resolve();
   const scan = () => document.querySelectorAll('img[data-favicon]:not([data-queued])').forEach(image => {
+    // A closed site picker should not download every website's icon.
+    for (let menu = image.closest('details'); menu; menu = menu.parentElement?.closest('details')) {
+      if (!menu.open && !menu.querySelector(':scope > summary')?.contains(image)) return;
+    }
     image.dataset.queued = 'true';
-    queue = queue.then(() => load(image));
+    queue = queue.then(() => image.isConnected && load(image));
   });
+  document.addEventListener('toggle', scan, true);
   scan();
   new MutationObserver(scan).observe(document.body, {childList:true,subtree:true});
 })();

@@ -352,6 +352,18 @@ async fn locations_drill_down_and_clear_children_while_preserving_report_state()
     }).await.unwrap();
     let html=body(request(&app,"/sites/1?from=2026-10-27&to=2026-10-27&browser=Chrome&source=Google&metric=pageviews&interval=day&compare=off",&cookie,None).await).await;
     assert!(html.contains("class=\"country-map\""));
+    let map = html
+        .split("<figure class=\"country-map\">")
+        .nth(1)
+        .unwrap()
+        .split("</figure>")
+        .next()
+        .unwrap();
+    assert!(
+        map.len() < 40_000,
+        "Report refreshes must not embed static map geometry"
+    );
+    assert!(map.contains("href=\"/assets/country-shapes.") && map.contains(".svg#US\""));
     let country = report_link(&html, "data-country=\"US\"");
     for pair in [
         "locations_tab=region",

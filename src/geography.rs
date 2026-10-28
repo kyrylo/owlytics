@@ -6,6 +6,35 @@ pub fn country_shapes() -> impl Iterator<Item = (&'static str, &'static str)> {
         .filter_map(|line| line.split_once('\t'))
 }
 
+// Country geometry is public and identical for every report. Keep it in a
+// cacheable SVG instead of retransmitting every path during live refreshes.
+pub fn country_sprite() -> &'static str {
+    static SVG: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        use std::fmt::Write;
+        let mut svg =
+            String::from(r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 300"><defs>"#);
+        for (code, path) in country_shapes() {
+            let _ = write!(
+                svg,
+                r#"<path id="{code}" d="{path}" vector-effect="non-scaling-stroke"/>"#
+            );
+        }
+        svg.push_str("</defs></svg>");
+        svg
+    });
+    &SVG
+}
+
+pub fn country_sprite_url() -> &'static str {
+    static URL: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        format!(
+            "/assets/country-shapes.{}.svg",
+            &crate::auth::digest(country_sprite())[..16]
+        )
+    });
+    &URL
+}
+
 // Binary-search the sorted UTF-8 asset without loading a city database or
 // allocating an index. Every byte offset is aligned to a complete TSV line.
 fn city_name(country: &str, identity: u32) -> Option<&'static str> {

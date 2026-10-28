@@ -16,6 +16,7 @@ async fn gzip_preserves_html_assets_and_cache_policy() {
     for path in [
         "/assets/app.css",
         "/assets/logo.svg",
+        "/assets/country-shapes.svg",
         "/script.js",
         "/login",
     ] {
@@ -93,6 +94,7 @@ async fn public_assets_revalidate_without_caching_private_pages() {
         "/assets/dashboard.js",
         "/assets/owl.svg",
         "/assets/logo.svg",
+        "/assets/country-shapes.svg",
         "/assets/favicon.svg",
     ] {
         let response = app
@@ -112,6 +114,28 @@ async fn public_assets_revalidate_without_caching_private_pages() {
                 owlytics::auth::digest(std::str::from_utf8(&bytes).unwrap())
             )
         );
+        if path == "/assets/country-shapes.svg" {
+            let versioned = format!("/assets/country-shapes.{}.svg", &etag[1..17]);
+            let response = app
+                .clone()
+                .oneshot(
+                    Request::builder()
+                        .uri(versioned)
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::OK);
+            assert_eq!(
+                response.headers()["cache-control"],
+                "public, max-age=31536000, immutable"
+            );
+            assert_eq!(
+                response.into_body().collect().await.unwrap().to_bytes(),
+                bytes
+            );
+        }
         for condition in [
             etag.clone(),
             format!("W/{etag}"),

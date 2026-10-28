@@ -618,7 +618,8 @@ fn country_map(
             "Visitors"
         }
     );
-    for (code, path) in &shapes {
+    let sprite = crate::geography::country_sprite_url();
+    for (code, _) in &shapes {
         let count = values.get(code).copied().unwrap_or(0);
         if count > 0 {
             let level = (1. + 4. * (count as f64).ln_1p() / (maximum as f64).ln_1p()).floor() as u8;
@@ -634,7 +635,7 @@ fn country_map(
             );
             let _ = write!(
                 out,
-                "<a href=\"{}\" aria-label=\"{}\" data-country=\"{code}\"><title>{}</title><path class=\"map-country map-level-{}\" d=\"{path}\"/></a>",
+                "<a href=\"{}\" aria-label=\"{}\" data-country=\"{code}\"><title>{}</title><use class=\"map-country map-level-{}\" href=\"{sprite}#{code}\"/></a>",
                 escape(&link(site, range, query, Some(("country", Some(code))))),
                 escape(&label),
                 escape(&label),
@@ -643,7 +644,7 @@ fn country_map(
         } else {
             let _ = write!(
                 out,
-                "<path class=\"map-country map-level-0\" d=\"{path}\" aria-hidden=\"true\"/>"
+                "<use class=\"map-country map-level-0\" href=\"{sprite}#{code}\" aria-hidden=\"true\"/>"
             );
         }
     }

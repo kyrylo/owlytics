@@ -1,0 +1,54 @@
+[package]
+name = "owlytics"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+description = "Small, self-hosted web analytics. Rust and SQLite."
+repository = "https://github.com/kyrylo/owlytics"
+license = "MIT"
+publish = false
+
+[dependencies]
+axum = { version = "0.8.9", default-features = false, features = ["form", "http1", "json", "query", "tokio"] }
+argon2 = "0.5.3"
+chrono = { version = "0.4.44", default-features = false, features = ["clock", "serde"] }
+chrono-tz = "0.10.4"
+csv = "1.4.0"
+getrandom = "0.3.4"
+hex = "0.4.3"
+hmac = "0.12.1"
+ipnet = "2.12.0"
+rusqlite = { version = "0.40.2", features = ["bundled", "backup"] }
+sha2 = "0.10.9"
+subtle = "2.6.1"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.150"
+thiserror = "2.0.21"
+tokio = { version = "1.53.3", features = ["macros", "rt-multi-thread", "net", "signal", "sync", "time"] }
+url = "2.5.8"
+zip = { version = "8.6.0", default-features = false }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+
+[dev-dependencies]
+http-body-util = "0.1.3"
+tower = { version = "0.5.3", features = ["util"] }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
+
+[profile.test.package.argon2]
+opt-level = 3
+
+[profile.test.package.blake2]
+opt-level = 3
+
+[profile.dev]
+debug = 0
+incremental = false
+
+[profile.test]
+debug = 0
+incremental = false
+opt-level = 1

@@ -1,0 +1,272 @@
+[
+  {
+    "file": "google.svg",
+    "revision": "90646e4bf7f3b89df6c37e65baf3e7bc759a517c",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/90646e4bf7f3b89df6c37e65baf3e7bc759a517c/icons/google.svg",
+    "sha256": "d8cf9fb2d5e234e03254f1d6400d8cc8160c309b010d031a64f37084b5a21d01"
+  },
+  {
+    "file": "microsoftbing.svg",
+    "revision": "0af835e2949a9222965522780e5e0810d3c53382",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/0af835e2949a9222965522780e5e0810d3c53382/icons/microsoftbing.svg",
+    "sha256": "09b4ebe4bb207182e70ce4b679a033dccfc471498a3c6de9ccf2826903e9fb37"
+  },
+  {
+    "file": "brave.svg",
+    "revision": "90646e4bf7f3b89df6c37e65baf3e7bc759a517c",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/90646e4bf7f3b89df6c37e65baf3e7bc759a517c/icons/brave.svg",
+    "sha256": "e32e023dbc07334bb967b1eafc8bca1ce184512b259f31edc71fa7d4a918e462"
+  },
+  {
+    "file": "ecosia.svg",
+    "revision": "90646e4bf7f3b89df6c37e65baf3e7bc759a517c",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/90646e4bf7f3b89df6c37e65baf3e7bc759a517c/icons/ecosia.svg",
+    "sha256": "0b57c7de1bb2251a1d8c284b27a28d205c6d7702e868319c171c645f3a0ab873"
+  },
+  {
+    "file": "baidu.svg",
+    "revision": "90646e4bf7f3b89df6c37e65baf3e7bc759a517c",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/90646e4bf7f3b89df6c37e65baf3e7bc759a517c/icons/baidu.svg",
+    "sha256": "e2eeaca4c5273ecff775ee4b357091678a7587b2d606190f8e5b7dce4d93a781"
+  },
+  {
+    "file": "qwant.svg",
+    "revision": "90646e4bf7f3b89df6c37e65baf3e7bc759a517c",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/90646e4bf7f3b89df6c37e65baf3e7bc759a517c/icons/qwant.svg",
+    "sha256": "635d6e2362ad3484b90f0616b5c15e4afe45a0e55f145f9dec914dc3cf05bf0c"
+  },
+  {
+    "file": "startpage.svg",
+    "revision": "90646e4bf7f3b89df6c37e65baf3e7bc759a517c",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/90646e4bf7f3b89df6c37e65baf3e7bc759a517c/icons/startpage.svg",
+    "sha256": "02da982904fefd06d4b5a001fbcc6e2bc52742808855eacf8d739cbce3010a23"
+  },
+  {
+    "file": "sogou.svg",
+    "revision": "90646e4bf7f3b89df6c37e65baf3e7bc759a517c",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/90646e4bf7f3b89df6c37e65baf3e7bc759a517c/icons/sogou.svg",
+    "sha256": "8d1c96e06e6a90e4e38816d0f796298abaaace118dd593d69fd348432fd43ac1"
+  },
+  {
+    "file": "openai.svg",
+    "revision": "0af835e2949a9222965522780e5e0810d3c53382",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/0af835e2949a9222965522780e5e0810d3c53382/icons/openai.svg",
+    "sha256": "2b4a04ddc2395b20d168694d3850ce2050a702c4a0cdeb4d8b31b9a970481a8c"
+  },
+  {
+    "file": "claude.svg",
+    "revision": "90646e4bf7f3b89df6c37e65baf3e7bc759a517c",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/90646e4bf7f3b89df6c37e65baf3e7bc759a517c/icons/claude.svg",
+    "sha256": "2d6fda79eb18ddccca35b799eeb3cece0dfabc22520ce3b10abd25668df9fa93"
+  },
+  {
+    "file": "perplexity.svg",
+    "revision": "90646e4bf7f3b89df6c37e65baf3e7bc759a517c",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/90646e4bf7f3b89df6c37e65baf3e7bc759a517c/icons/perplexity.svg",
+    "sha256": "57220c29378ce5e615e7244d2fdfcf5a44fad40dad81a99f2e0e4260c726ca74"
+  },
+  {
+    "file": "googlegemini.svg",
+    "revision": "90646e4bf7f3b89df6c37e65baf3e7bc759a517c",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/90646e4bf7f3b89df6c37e65baf3e7bc759a517c/icons/googlegemini.svg",
+    "sha256": "a6228d8846040401e941a39ed17459785e8324dbb7b870ce84233c9b3e9863a0"
+  },
+  {
+    "file": "deepseek.svg",
+    "revision": "90646e4bf7f3b89df6c37e65baf3e7bc759a517c",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/90646e4bf7f3b89df6c37e65baf3e7bc759a517c/icons/deepseek.svg",
+    "sha256": "7a55a0a7391d116eba7d32807d6838478f9209f6034612941e74fbb14934e2ef"
+  },
+  {
+    "file": "facebook.svg",
+    "revision": "90646e4bf7f3b89df6c37e65baf3e7bc759a517c",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/90646e4bf7f3b89df6c37e65baf3e7bc759a517c/icons/facebook.svg",
+    "sha256": "b06d18d844ed621b89faffb1a33440cc0ec4f1ffea9f36191f50db19a47c59a6"
+  },
+  {
+    "file": "x.svg",
+    "revision": "90646e4bf7f3b89df6c37e65baf3e7bc759a517c",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/90646e4bf7f3b89df6c37e65baf3e7bc759a517c/icons/x.svg",
+    "sha256": "693e68863eceb8dc9f72e2acd386ab9c20a10858dab2c076212f7084cb7a32fe"
+  },
+  {
+    "file": "linkedin.svg",
+    "revision": "0af835e2949a9222965522780e5e0810d3c53382",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/0af835e2949a9222965522780e5e0810d3c53382/icons/linkedin.svg",
+    "sha256": "2687ac468d96bd03e748dc8646ef6465cb4cc7f34b96e1d0bc86fcb3dd79121a"
+  },
+  {
+    "file": "reddit.svg",
+    "revision": "90646e4bf7f3b89df6c37e65baf3e7bc759a517c",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/90646e4bf7f3b89df6c37e65baf3e7bc759a517c/icons/reddit.svg",
+    "sha256": "00e5008d56567543cf956561e61d5bf9bf629f520c7488a4d9a00164c29dd8ba"
+  },
+  {
+    "file": "github.svg",
+    "revision": "90646e4bf7f3b89df6c37e65baf3e7bc759a517c",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/90646e4bf7f3b89df6c37e65baf3e7bc759a517c/icons/github.svg",
+    "sha256": "3bf8cceead820aec50d4ee825a3fd02c5a1cd6665cc9cf4cbf3d9c8861a204bb"
+  },
+  {
+    "file": "ycombinator.svg",
+    "revision": "90646e4bf7f3b89df6c37e65baf3e7bc759a517c",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/90646e4bf7f3b89df6c37e65baf3e7bc759a517c/icons/ycombinator.svg",
+    "sha256": "436dba1269c2a8211434ee3eb454f4fd97e414caedfbf590fe2de07f36319028"
+  },
+  {
+    "file": "producthunt.svg",
+    "revision": "90646e4bf7f3b89df6c37e65baf3e7bc759a517c",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/90646e4bf7f3b89df6c37e65baf3e7bc759a517c/icons/producthunt.svg",
+    "sha256": "60f1b76ca6517bf5e025de21053305392a5dd8968ceed6dcae839f19936bfc85"
+  },
+  {
+    "file": "bluesky.svg",
+    "revision": "90646e4bf7f3b89df6c37e65baf3e7bc759a517c",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/90646e4bf7f3b89df6c37e65baf3e7bc759a517c/icons/bluesky.svg",
+    "sha256": "49752973164fbbf4464fbb4776f011c1eff207e5d7ad9254e031af025814eb75"
+  },
+  {
+    "file": "threads.svg",
+    "revision": "90646e4bf7f3b89df6c37e65baf3e7bc759a517c",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/90646e4bf7f3b89df6c37e65baf3e7bc759a517c/icons/threads.svg",
+    "sha256": "3511f687f9a5713a3700130627f8d3611fb4cd54d3a9757071c93652c7fe16e8"
+  },
+  {
+    "file": "pinterest.svg",
+    "revision": "90646e4bf7f3b89df6c37e65baf3e7bc759a517c",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/90646e4bf7f3b89df6c37e65baf3e7bc759a517c/icons/pinterest.svg",
+    "sha256": "d0736c4b1390f895ed9bc156cc887d3bd65c5b66258c00ad07888e9ec7d729ad"
+  },
+  {
+    "file": "telegram.svg",
+    "revision": "90646e4bf7f3b89df6c37e65baf3e7bc759a517c",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/90646e4bf7f3b89df6c37e65baf3e7bc759a517c/icons/telegram.svg",
+    "sha256": "147fd8f8923e7e5f463fe98c0eb9913bead6b2ae59935728cda141002ec8a7c9"
+  },
+  {
+    "file": "discord.svg",
+    "revision": "90646e4bf7f3b89df6c37e65baf3e7bc759a517c",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/90646e4bf7f3b89df6c37e65baf3e7bc759a517c/icons/discord.svg",
+    "sha256": "1d364b72c9eaf1fe37d17ca88cd8fb541308dc0f3b09e2ab3b824f380b3493d5"
+  },
+  {
+    "file": "slack.svg",
+    "revision": "0af835e2949a9222965522780e5e0810d3c53382",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/0af835e2949a9222965522780e5e0810d3c53382/icons/slack.svg",
+    "sha256": "f23c317b279f53dcd2260a6cd2e279f7a696f87dcb3da259d6201f05bbc45b0d"
+  },
+  {
+    "file": "whatsapp.svg",
+    "revision": "90646e4bf7f3b89df6c37e65baf3e7bc759a517c",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/90646e4bf7f3b89df6c37e65baf3e7bc759a517c/icons/whatsapp.svg",
+    "sha256": "8fb209a53a61618c3483594b3e070481a35575d6aaecbe00a6fe386670c8fb1c"
+  },
+  {
+    "file": "microsoftteams.svg",
+    "revision": "0af835e2949a9222965522780e5e0810d3c53382",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/0af835e2949a9222965522780e5e0810d3c53382/icons/microsoftteams.svg",
+    "sha256": "9c509b9aea846e4a773d59df7fe3d29843e9e05c3579ce167d1e7e5ba14be1d1"
+  },
+  {
+    "file": "youtube.svg",
+    "revision": "90646e4bf7f3b89df6c37e65baf3e7bc759a517c",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/90646e4bf7f3b89df6c37e65baf3e7bc759a517c/icons/youtube.svg",
+    "sha256": "5038808acbbc4e6edda16cbeb1cc6dec80e4e4ee4e227e039c41229fa222aa8c"
+  },
+  {
+    "file": "tiktok.svg",
+    "revision": "90646e4bf7f3b89df6c37e65baf3e7bc759a517c",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/90646e4bf7f3b89df6c37e65baf3e7bc759a517c/icons/tiktok.svg",
+    "sha256": "6f54ac8d325faacea8935bdc44cbed60206a6b408641799e5fea1cba7c1a0af7"
+  },
+  {
+    "file": "vimeo.svg",
+    "revision": "90646e4bf7f3b89df6c37e65baf3e7bc759a517c",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/90646e4bf7f3b89df6c37e65baf3e7bc759a517c/icons/vimeo.svg",
+    "sha256": "8769e0252009f9babc5f1de2ba6c0638411a2104e7f6f3af6b13cc8310cbd992"
+  },
+  {
+    "file": "twitch.svg",
+    "revision": "90646e4bf7f3b89df6c37e65baf3e7bc759a517c",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/90646e4bf7f3b89df6c37e65baf3e7bc759a517c/icons/twitch.svg",
+    "sha256": "dbe27bc02a01b8d89b6259cacef328c9fa70bb13c29f38c36eb1421863f6f0b6"
+  },
+  {
+    "file": "amazon.svg",
+    "revision": "0af835e2949a9222965522780e5e0810d3c53382",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/0af835e2949a9222965522780e5e0810d3c53382/icons/amazon.svg",
+    "sha256": "f7ef379d2ea0da19e63e74e394ec6a1423e335ef785a456729da66a840858dbf"
+  },
+  {
+    "file": "ebay.svg",
+    "revision": "90646e4bf7f3b89df6c37e65baf3e7bc759a517c",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/90646e4bf7f3b89df6c37e65baf3e7bc759a517c/icons/ebay.svg",
+    "sha256": "846e8d8ac6cea49766e7c62e095e739d115ed355f9b63bf46067f14c9343c745"
+  },
+  {
+    "file": "etsy.svg",
+    "revision": "90646e4bf7f3b89df6c37e65baf3e7bc759a517c",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/90646e4bf7f3b89df6c37e65baf3e7bc759a517c/icons/etsy.svg",
+    "sha256": "4780de1a0c4949e614557a1fe1d3deb5f57fc0f1f901d19cafcf77091b7d5202"
+  },
+  {
+    "file": "gmail.svg",
+    "revision": "90646e4bf7f3b89df6c37e65baf3e7bc759a517c",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/90646e4bf7f3b89df6c37e65baf3e7bc759a517c/icons/gmail.svg",
+    "sha256": "a537f5d85d9a27efa3a5d6086e8df6072ee93f76b4d176639a5e483f74b74b9f"
+  },
+  {
+    "file": "firefox.svg",
+    "revision": "90646e4bf7f3b89df6c37e65baf3e7bc759a517c",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/90646e4bf7f3b89df6c37e65baf3e7bc759a517c/icons/firefox.svg",
+    "sha256": "819fc94c6ce1dfa1874f069c88ff9d666fb4ce669e23781ec8dbf163a5a012e2"
+  },
+  {
+    "file": "apple.svg",
+    "revision": "90646e4bf7f3b89df6c37e65baf3e7bc759a517c",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/90646e4bf7f3b89df6c37e65baf3e7bc759a517c/icons/apple.svg",
+    "sha256": "2a1509dccd25e6d2bc7a11a8e52941077e1a48555e192ce638699b9f083c2a7c"
+  },
+  {
+    "file": "linux.svg",
+    "revision": "90646e4bf7f3b89df6c37e65baf3e7bc759a517c",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/90646e4bf7f3b89df6c37e65baf3e7bc759a517c/icons/linux.svg",
+    "sha256": "7e55f2779ae11a83c9dad2d0414a65d8ca7867d0716ce58bfe41ed299ae1447f"
+  },
+  {
+    "file": "duckduckgo.svg",
+    "revision": "90646e4bf7f3b89df6c37e65baf3e7bc759a517c",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/90646e4bf7f3b89df6c37e65baf3e7bc759a517c/icons/duckduckgo.svg",
+    "sha256": "82648474f6ddd359747a4bdb843b326bca081d6c0fa15230d0fe3451d2316d63"
+  },
+  {
+    "file": "instagram.svg",
+    "revision": "90646e4bf7f3b89df6c37e65baf3e7bc759a517c",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/90646e4bf7f3b89df6c37e65baf3e7bc759a517c/icons/instagram.svg",
+    "sha256": "f53af2d1fc5292ba1433b5c1faf50005ce6a997fa302d1816989929f379a59dc"
+  },
+  {
+    "file": "microsoftedge.svg",
+    "revision": "0af835e2949a9222965522780e5e0810d3c53382",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/0af835e2949a9222965522780e5e0810d3c53382/icons/microsoftedge.svg",
+    "sha256": "5f6a04ca78a1c88dd253c7e66394c1f97e5dba717ee90b0468e8959b10ae4388"
+  },
+  {
+    "file": "opera.svg",
+    "revision": "90646e4bf7f3b89df6c37e65baf3e7bc759a517c",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/90646e4bf7f3b89df6c37e65baf3e7bc759a517c/icons/opera.svg",
+    "sha256": "d3cf04a0338da6fe721e97fcc7176c8d16166302dedaaa9af1706dc3f3b92f63"
+  },
+  {
+    "file": "ubuntu.svg",
+    "revision": "90646e4bf7f3b89df6c37e65baf3e7bc759a517c",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/90646e4bf7f3b89df6c37e65baf3e7bc759a517c/icons/ubuntu.svg",
+    "sha256": "b0aca674c881a07bb60b26afbcee07093ae419e29ee38e376f938817fa66ae03"
+  },
+  {
+    "file": "googlechrome.svg",
+    "revision": "90646e4bf7f3b89df6c37e65baf3e7bc759a517c",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/90646e4bf7f3b89df6c37e65baf3e7bc759a517c/icons/googlechrome.svg",
+    "sha256": "ce2ff9d2a010ed24f821ef34e40dc125d2bdf1dd28f42ded7b6017585b73c1dd"
+  }
+]

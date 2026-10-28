@@ -1,0 +1,48 @@
+name: Test
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.96.0
+        with:
+          components: rustfmt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: ./bin/test
+      - run: cargo build --release --locked
+      - name: Install browser test tools
+        run: |
+          npm install --prefix "$RUNNER_TEMP/owlytics-browser" playwright@1.62.1
+          "$RUNNER_TEMP/owlytics-browser/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Check browser flows and responsive layouts
+        run: NODE_PATH="$RUNNER_TEMP/owlytics-browser/node_modules" node bin/test-browser.mjs
+      - name: Check report tables, menus and exports
+        run: NODE_PATH="$RUNNER_TEMP/owlytics-browser/node_modules" node bin/test-parity.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-checks
+          path: |
+            tmp/browser-checks/
+            tmp/parity-checks/
+          if-no-files-found: ignore
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: docker build -t owlytics:test .
+      - run: node bin/test-container.mjs

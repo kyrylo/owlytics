@@ -1,0 +1,14 @@
+/target/
+/data/
+/tmp/
+/design/
+/.env
+/.env.*
+!/.env.example
+/.kamal/secrets*
+!/.kamal/secrets.example
+/config/deploy.telebugs.yml
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+.DS_Store

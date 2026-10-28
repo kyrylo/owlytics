@@ -1,0 +1,55 @@
+service: owlytics
+image: <%= ENV.fetch("OWLYTICS_IMAGE") %>
+
+# Existing databases may need a one-time aggregate rebuild before serving.
+deploy_timeout: <%= Integer(ENV.fetch("OWLYTICS_DEPLOY_TIMEOUT", "300")) %>
+
+servers:
+  web:
+    - <%= ENV.fetch("OWLYTICS_SERVER") %>
+
+proxy:
+  ssl: true
+  forward_headers: false
+  host: <%= ENV.fetch("OWLYTICS_HOST") %>
+  app_port: 3000
+  buffering:
+    max_request_body: 8192
+    memory: 8192
+  # A dedicated proxy: its normal request logs contain IPs and user agents.
+  # These run options affect every application sharing this proxy.
+  run:
+    log_max_size: ""
+    options:
+      log-driver: none
+  healthcheck:
+    path: /up
+    interval: 3
+    timeout: 3
+
+registry:
+  server: <%= ENV.fetch("OWLYTICS_REGISTRY", "ghcr.io") %>
+  username: <%= ENV.fetch("OWLYTICS_REGISTRY_USERNAME") %>
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+builder:
+  arch: <%= ENV.fetch("OWLYTICS_ARCH", "amd64") %>
+  dockerfile: Dockerfile
+
+env:
+  secret:
+    - OWLYTICS_PASSWORD_HASH
+  clear:
+    OWLYTICS_BIND: 0.0.0.0:3000
+    OWLYTICS_DATABASE: /data/owlytics.sqlite
+    OWLYTICS_URL: https://<%= ENV.fetch("OWLYTICS_HOST") %>
+    OWLYTICS_TRUSTED_PROXIES: <%= ENV.fetch("OWLYTICS_TRUSTED_PROXIES").tap { |value| raise "Set the Kamal Docker network CIDR" if value.empty? } %>
+
+volumes:
+  - owlytics_data:/data
+
+aliases:
+  logs: app logs -f
+
+retain_containers: 3

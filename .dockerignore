@@ -1,0 +1,13 @@
+*
+!Cargo.toml
+!Cargo.lock
+!src/
+!src/**
+!assets/
+!assets/**
+!templates/
+!templates/**
+!LICENSE
+!docs/
+!docs/licenses/
+!docs/licenses/**

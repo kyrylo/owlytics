@@ -15,7 +15,6 @@ proxy:
   app_port: 3000
   buffering:
     max_request_body: 8192
-    memory: 8192
   # A dedicated proxy: its normal request logs contain IPs and user agents.
   # These run options affect every application sharing this proxy.
   run:

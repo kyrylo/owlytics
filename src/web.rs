@@ -93,6 +93,7 @@ pub fn router(db: Database, config: Config) -> Router {
         )
         .layer(DefaultBodyLimit::max(8 * 1024))
         .layer(middleware::from_fn(security_headers))
+        .layer(tower_http::compression::CompressionLayer::new())
         .with_state(app)
 }
 
@@ -130,10 +131,22 @@ fn asset(content_type: &'static str, body: &'static str) -> axum::routing::Metho
 async fn security_headers(request: Request, next: Next) -> Response {
     let favicon = request.uri().path().ends_with("/favicon");
     let mut response = next.run(request).await;
+    // Serve private HTML unchanged through CDNs: injected scripts violate our
+    // CSP, and edge transformations can delay delivery of live reports.
+    let cache_control = if response
+        .headers()
+        .get(header::CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .is_some_and(|value| value.starts_with("text/html"))
+    {
+        "no-store, no-transform"
+    } else {
+        "no-store"
+    };
     response
         .headers_mut()
         .entry(header::CACHE_CONTROL)
-        .or_insert(HeaderValue::from_static("no-store"));
+        .or_insert(HeaderValue::from_static(cache_control));
     for (name, value) in [
         ("x-content-type-options", "nosniff"),
         ("referrer-policy", "same-origin"),

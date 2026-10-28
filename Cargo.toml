@@ -28,10 +28,12 @@ tokio = { version = "1.53.3", features = ["macros", "rt-multi-thread", "net", "s
 url = "2.5.8"
 zip = { version = "8.6.0", default-features = false }
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+tower-http = { version = "0.6.11", default-features = false, features = ["compression-gzip"] }
 
 [dev-dependencies]
 http-body-util = "0.1.3"
 tower = { version = "0.5.3", features = ["util"] }
+flate2 = "1.1.9"
 
 [profile.release]
 lto = "thin"

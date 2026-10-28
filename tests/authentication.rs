@@ -103,7 +103,10 @@ async fn owner_can_sign_in_and_log_out_and_old_cookie_is_revoked() {
     let owner_cookie = login(&app).await;
     let home = request(&app, "/", &owner_cookie, None, None).await;
     assert_eq!(home.status(), StatusCode::OK);
-    assert_eq!(home.headers()[header::CACHE_CONTROL], "no-store");
+    assert_eq!(
+        home.headers()[header::CACHE_CONTROL],
+        "no-store, no-transform"
+    );
     assert_eq!(home.headers()["x-frame-options"], "DENY");
     let token = csrf(&text(home).await);
     let raw = owner_cookie.split('=').nth(1).unwrap();

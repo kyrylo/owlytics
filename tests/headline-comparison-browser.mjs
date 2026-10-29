@@ -26,7 +26,7 @@ c.commit()
         const card=page.getByRole('link',{name:`Show ${name}`,exact:true});
         assert.equal(await card.locator('strong').innerText(),current);
         assert.equal(await card.locator('.metric-previous>b').innerText(),previous);
-        assert.deepEqual(await card.locator('.metric-date').allTextContents(),['1 Feb 2025','31 Jan 2025']);
+        assert.deepEqual(await card.locator('.metric-date').allTextContents(),['Sat, 01 Feb','Fri, 31 Jan']);
       }
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
       const overflow=await page.locator('.metric-date,.metric-previous>b').evaluateAll(elements=>elements.filter(e=>{

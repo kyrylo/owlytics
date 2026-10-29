@@ -445,37 +445,42 @@ pub(crate) fn link(
     format!("/sites/{}?{}", site.id, params.finish())
 }
 
-fn metric_value(metric: Metric, row: &Row) -> String {
-    metric_display(metric, row.available(metric).then(|| metric.value(row)))
+fn headline_value(metric: Metric, row: &Row) -> String {
+    compact_metric(metric, row.available(metric).then(|| metric.value(row)))
 }
 
-fn headline_value(metric: Metric, row: &Row) -> String {
-    if row.available(metric)
-        && matches!(
+fn compact_metric(metric: Metric, value: Option<f64>) -> String {
+    if let Some(value) = value.filter(|_| {
+        matches!(
             metric,
             Metric::Visitors | Metric::Pageviews | Metric::Visits
         )
-    {
-        compact_number(metric.value(row) as i64)
+    }) {
+        compact_number(value as i64)
     } else {
-        metric_value(metric, row)
+        metric_display(metric, value)
     }
 }
 
 fn headline_dates(range: &Range, today: chrono::NaiveDate) -> String {
     use chrono::Datelike;
-    let format = if range.from.year() != today.year() || range.to.year() != today.year() {
-        "%-d %b %Y"
-    } else {
-        "%-d %b"
-    };
     if range.from == range.to {
-        range.from.format(format).to_string()
+        range.from.format("%a, %d %b").to_string()
     } else {
         format!(
             "{} - {}",
-            range.from.format(format),
-            range.to.format(format)
+            range.from.format(if range.from.year() != range.to.year() {
+                "%-d %b %y"
+            } else {
+                "%-d %b"
+            }),
+            range.to.format(
+                if range.to.year() != today.year() || range.from.year() != range.to.year() {
+                    "%-d %b %y"
+                } else {
+                    "%-d %b"
+                }
+            )
         )
     }
 }
@@ -1282,6 +1287,7 @@ fn chart(
         axis: String,
         axis_short: Option<String>,
         clock: Option<String>,
+        ambiguous_clock: bool,
         wall_minute: Option<i64>,
         day_axis: String,
         ongoing: bool,
@@ -1296,6 +1302,7 @@ fn chart(
         zone: chrono_tz::Tz,
         now: i64,
     ) -> Vec<Point> {
+        use chrono::TimeZone;
         let today = chrono::DateTime::from_timestamp(now, 0)
             .unwrap()
             .with_timezone(&zone)
@@ -1324,6 +1331,10 @@ fn chart(
                         zoom: None,
                         axis_short: None,
                         clock: (!report.realtime).then(|| time.format("%H:%M").to_string()),
+                        ambiguous_clock: matches!(
+                            zone.from_local_datetime(&time.naive_local()),
+                            chrono::LocalResult::Ambiguous(..)
+                        ),
                         wall_minute: Some(time.naive_local().and_utc().timestamp().div_euclid(60)),
                         day_axis: short_date(time.date_naive()),
                         ongoing: !report.realtime && report.timeline_end > now && now < bucket.end,
@@ -1334,7 +1345,7 @@ fn chart(
                                 if minutes == 1 { "" } else { "s" }
                             )
                         } else {
-                            time.format("%b %-d, %H:%M %Z").to_string()
+                            time.format("%a, %d %b %Y, %H:%M %Z").to_string()
                         },
                         axis: if report.realtime {
                             format!("-{}m", report.timeline.len() - index)
@@ -1407,7 +1418,7 @@ fn chart(
                         if partial { "Partial of " } else { "" },
                         date.format("%B %Y")
                     ),
-                    _ => from.format("%b %-d, %Y").to_string(),
+                    _ => from.format("%a, %d %b %Y").to_string(),
                 };
                 Point {
                     zoom: match query.interval.as_deref() {
@@ -1424,6 +1435,7 @@ fn chart(
                     axis_short: (query.interval.as_deref() == Some("month"))
                         .then(|| date.format("%b %y").to_string()),
                     clock: None,
+                    ambiguous_clock: false,
                     wall_minute: None,
                     day_axis: short_date(from),
                     ongoing,
@@ -1540,23 +1552,35 @@ fn chart(
         );
     }
     content.push_str("\" aria-hidden=\"true\"/>");
+    content.push_str("<defs><linearGradient id=\"chart-fade\" gradientUnits=\"userSpaceOnUse\" x1=\"0\" y1=\"20\" x2=\"0\" y2=\"280\"><stop offset=\"0\" stop-opacity=\".15\"/><stop offset=\"1\" stop-opacity=\"0\"/></linearGradient><linearGradient id=\"chart-previous-fade\" gradientUnits=\"userSpaceOnUse\" x1=\"0\" y1=\"20\" x2=\"0\" y2=\"280\"><stop offset=\"0\" stop-opacity=\".05\"/><stop offset=\"1\" stop-opacity=\"0\"/></linearGradient></defs>");
+    for (rows, class) in [(&old, "chart-area-previous"), (&data, "chart-area")] {
+        for segment in segments(rows) {
+            let _ = write!(
+                content,
+                "<polygon class=\"{class}\" points=\"{:.2},280 {} {:.2},280\"/>",
+                segment.first().unwrap().1,
+                points(&segment),
+                segment.last().unwrap().1
+            );
+        }
+    }
     for segment in segments(&old) {
         let _ = write!(
             content,
             "<polyline class=\"chart-previous\" points=\"{}\"/>",
             points(&segment)
         );
+        if segment.len() == 1 {
+            let _ = write!(
+                content,
+                "<path class=\"chart-point chart-point-previous\" d=\"M{:.2} {:.2}h0\"/>",
+                segment[0].1, segment[0].2
+            );
+        }
     }
     for segment in segments(&data) {
         let first = segment.first().unwrap();
         let last = segment.last().unwrap();
-        let _ = write!(
-            content,
-            "<polygon class=\"chart-area\" points=\"{:.2},280 {} {:.2},280\"/>",
-            first.1,
-            points(&segment),
-            last.1,
-        );
         if data[last.0].ongoing && segment.len() > 1 {
             let _ = write!(
                 content,
@@ -1645,9 +1669,21 @@ fn chart(
                 String::new(),
             )
         };
+        let mut display = String::new();
+        for (prefix, point) in [("", point), ("previous-", before)] {
+            if let Some(point) = point {
+                if point.ambiguous_clock {
+                    let _ = write!(display, " data-{prefix}ambiguous-clock=\"true\"");
+                }
+                let compact = compact_metric(metric, point.value);
+                if compact != metric_display(metric, point.value) {
+                    let _ = write!(display, " data-{prefix}display-value=\"{compact}\"");
+                }
+            }
+        }
         let _ = write!(
             content,
-            "<{tag} class=\"chart-hit\" {attributes} tabindex=\"0\" aria-label=\"{}\" data-date=\"{}\" data-value=\"{}\" data-previous-date=\"{}\" data-previous-value=\"{}\" data-change=\"{}\" data-tone=\"{}\" data-x=\"{point_x:.2}\" data-y=\"{}\" data-previous-y=\"{}\" data-zoom=\"{zoom_period}\" data-clock=\"{}\" data-previous-clock=\"{}\" data-incomplete=\"{}\">{shape}<title>{}</title></{tag}>",
+            "<{tag} class=\"chart-hit\" {attributes} tabindex=\"0\" aria-label=\"{}\" data-date=\"{}\" data-value=\"{}\" data-previous-date=\"{}\" data-previous-value=\"{}\" data-change=\"{}\" data-tone=\"{}\" data-x=\"{point_x:.2}\" data-y=\"{}\" data-previous-y=\"{}\" data-zoom=\"{zoom_period}\" data-clock=\"{}\" data-previous-clock=\"{}\" data-incomplete=\"{}\"{display}>{shape}<title>{}</title></{tag}>",
             escape(&description),
             escape(label),
             metric_display(metric, value),
@@ -1675,8 +1711,12 @@ fn chart(
     content.push_str("<g class=\"chart-cursor\" hidden aria-hidden=\"true\"><line y1=\"20\" y2=\"280\"/><path class=\"chart-marker\"/><path class=\"chart-marker chart-marker-previous\"/></g></svg>");
     let _ = write!(
         content,
-        "<div class=\"chart-tooltip\" role=\"tooltip\" hidden><p>{}</p><div class=\"chart-tooltip-current\"><span></span><strong></strong></div><div class=\"chart-tooltip-previous\"><span></span><strong></strong></div><small></small><a class=\"chart-tooltip-zoom\" hidden></a></div>",
-        metric.name()
+        "<div class=\"chart-tooltip\" role=\"tooltip\" hidden><header><p>{}</p><small></small></header><div class=\"chart-tooltip-current\"><span></span><strong></strong></div><div class=\"chart-tooltip-previous\"><span></span><strong></strong></div><footer>Right click to pin tooltip</footer><a class=\"chart-tooltip-zoom\" hidden></a></div>",
+        match metric {
+            Metric::Visitors => "Unique visitors",
+            Metric::Pageviews => "Total pageviews",
+            _ => metric.name(),
+        }
     );
     content.push_str(if report.realtime {
         "<div class=\"chart-labels chart-labels-realtime\" aria-hidden=\"true\">"
@@ -2147,7 +2187,7 @@ fn date_controls(
     let today = site.today();
     let label = match calendar_period(range, query) {
         Some("day") if range.from != today && query.period.as_deref() != Some("yesterday") => {
-            Some(range_label(range))
+            Some(range.from.format("%a, %d %b %Y").to_string())
         }
         Some("month") if range.from != today.with_day(1).unwrap() => {
             Some(range.from.format("%B %Y").to_string())
@@ -2162,7 +2202,7 @@ fn date_controls(
             .iter()
             .find(|(key, _)| query.period.as_deref() == Some(*key))
             .map(|(_, title)| title.to_string())
-            .unwrap_or_else(|| range_label(range))
+            .unwrap_or_else(|| headline_dates(range, today))
     });
     let mut body = format!(
         "<details class=\"dropdown date-picker\" name=\"dashboard-menu\"><summary>{}<span>{}</span></summary><div class=\"dropdown-content\">",
@@ -2302,7 +2342,7 @@ fn date_controls(
     let mode = query.compare.as_deref().unwrap_or("previous");
     let label = match mode {
         "year" => "Year over year".to_string(),
-        "custom" => range_label(previous),
+        "custom" => headline_dates(previous, today),
         _ => "Previous period".to_string(),
     };
     let _ = write!(

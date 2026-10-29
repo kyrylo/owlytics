@@ -16,6 +16,7 @@ import {checkRealtime} from '../tests/realtime-browser.mjs';
 import {checkNavigation} from '../tests/navigation-browser.mjs';
 import {checkPreferences} from '../tests/preferences-browser.mjs';
 import {checkChartFormatting} from '../tests/chart-format-browser.mjs';
+import {checkChartDetails} from '../tests/chart-details-browser.mjs';
 import {checkSourceIcons} from '../tests/source-icons-browser.mjs';
 import {checkRowComparisons} from '../tests/row-comparison-browser.mjs';
 import {checkSessionMeans} from '../tests/session-means-browser.mjs';
@@ -98,8 +99,7 @@ c.commit()
  assert.equal(await tooltip.locator('.chart-tooltip-previous strong').innerText(),'10');
  assert.equal(await tooltip.locator('small').innerText(),'→ 0%');
  assert.equal(await page.locator('.chart-cursor line').getAttribute('x1'),'0.00');
- await tooltip.hover();
- assert.equal(await tooltip.isVisible(),true,'Details stay open when the pointer enters them');
+ assert.equal(await tooltip.evaluate(e=>getComputedStyle(e).pointerEvents),'none','Unpinned details do not block the chart beneath them');
  await screenshot('chart-tooltip-light');
  await page.mouse.move(0,0);
  assert.equal(await tooltip.isVisible(),false);
@@ -144,7 +144,7 @@ c.commit()
  await hits.last().focus();
  assert.equal(await hits.count(),25);
  assert.equal(await tooltip.locator('.chart-tooltip-current').isVisible(),false,'A comparison-only interval has no invented current date');
- assert.equal(await tooltip.locator('.chart-tooltip-previous span').innerText(),'Nov 2, 23:00 EST');
+ assert.equal(await tooltip.locator('.chart-tooltip-previous span').innerText(),'Sun, 02 Nov 2025, 23:00');
  assert.equal(await tooltip.locator('.chart-tooltip-previous strong').innerText(),'1');
  assert.equal(await page.locator('.chart-marker').first().getAttribute('d'),'');
  assert.equal(await page.locator('.chart-marker-previous').getAttribute('d'),'M1000.00 20.00h0');
@@ -314,7 +314,7 @@ with zipfile.ZipFile(sys.argv[1]) as z:
  await page.getByRole('link',{name:'Last 7 days',exact:true}).click();
  assert.equal(await hits.count(),7);
  assert.equal(new URL(page.url()).searchParams.get('compare'),'year');
- assert.equal(await hits.last().getAttribute('data-date'),new Date(`${date(-1)}T00:00Z`).toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric',year:'numeric'}));
+ assert.equal(await hits.last().getAttribute('data-date'),new Date(`${date(-1)}T00:00Z`).toLocaleDateString('en-GB',{timeZone:'UTC',weekday:'short',month:'short',day:'2-digit',year:'numeric'}));
  // Menus fit the viewport even when the toolbar wraps; Escape restores focus.
  for(const scheme of ['light','dark']) {
    await page.emulateMedia({colorScheme:scheme});
@@ -366,6 +366,7 @@ with zipfile.ZipFile(sys.argv[1]) as z:
  await checkRealtime({context,browser,origin,database,output});
  await checkNavigation({context,browser,origin,database,output});
  await checkChartFormatting({context,browser,origin,database,output});
+ await checkChartDetails({context,browser,origin,database,output});
  await checkSourceIcons({context,browser,origin,database,output});
  await checkRowComparisons({context,browser,origin,database,output});
  await checkSessionMeans({context,browser,origin,database,output});
@@ -378,7 +379,7 @@ with zipfile.ZipFile(sys.argv[1]) as z:
  await checkReportWindows({context,browser,origin,database,output});
  await checkCrossdayReports({context,browser,origin,database,output});
  await checkEngagementFocus({context,browser,origin,database,output});
- assert.deepEqual(errors,[]);writeFileSync(join(output,'results.json'),JSON.stringify({passed:true,checks:['site-local calendar selection, leap days, reversed ranges, comparison dates and no-JavaScript forms','previous headline totals and dates with missing imported metrics across themes, mobile and no JavaScript','expanded report overlay, live search, scroll containment and closing during a pending search','browser focus/blur handling and three-second engagement buffering with controlled focus state','cross-date visitor and visit counts, calendar engagement, comparisons and interval CSVs in light/dark and without JavaScript','local-midnight visit overlap, exact date bounds and full-visit metrics across UTC, fractional offsets and DST','event-based percentage audiences, unavailable denominators and known-location tables/CSVs in light/dark and without JavaScript','visit-based report counts and matching expanded columns, CSVs, light/dark and no JavaScript',
+ assert.deepEqual(errors,[]);writeFileSync(join(output,'results.json'),JSON.stringify({passed:true,checks:['isolated comparison dots, compact chart details, year and DST labels, pointer pass-through, pinning and touch zoom in both themes','site-local calendar selection, leap days, reversed ranges, comparison dates and no-JavaScript forms','previous headline totals and dates with missing imported metrics across themes, mobile and no JavaScript','expanded report overlay, live search, scroll containment and closing during a pending search','browser focus/blur handling and three-second engagement buffering with controlled focus state','cross-date visitor and visit counts, calendar engagement, comparisons and interval CSVs in light/dark and without JavaScript','local-midnight visit overlap, exact date bounds and full-visit metrics across UTC, fractional offsets and DST','event-based percentage audiences, unavailable denominators and known-location tables/CSVs in light/dark and without JavaScript','visit-based report counts and matching expanded columns, CSVs, light/dark and no JavaScript',
   'inherited visit location and software filters, page intersections, dark mobile and no JavaScript','rolling-window traffic and complete-visit averages in light/dark and without JavaScript','row comparisons with exact prior values, missing history, keyboard and touch details','known-zero growth and empty-period charts; unavailable row duration and bounce changes','local source and software SVGs, alias identity, safe referrer hosts and site icons','responsive site picker, zero external icon requests and no-script site navigation','unfinished intervals and historical partial weeks/months','browser 12/24-hour clocks with preserved site timezone and DST distinctions','rounded SVG axis ticks at desktop, 390px and 360px, including no JavaScript','saved per-site metrics and report tabs; per-period intervals with calendar aliases and URL precedence','minute charts, DST offsets, imported-history fallback and custom interval defaults','realtime five/thirty-minute counts and empty audiences','realtime refresh timing, edit/visibility pauses, recovery, session expiry and navigation races','import switch across reports, suggestions and CSVs, including queued filters and no JavaScript','per-site date/comparison preferences with explicit URL overrides and optional storage','date, custom-range, interval and comparison shortcuts','comparison defaults and additional date presets','grouped filter chips, operators and immediate multi-selection','queued filter changes preserve search and chart navigation','filter suggestions and pagination retain selections','filter editing without JavaScript','Escape priority and filter history navigation','six metrics','report tabs','local country map and keyboard navigation without JavaScript','country/region/city drilldown and filter removal','location bounce-rate sorting and compact visitor percentages','no third-party location requests','chart comparison tooltip and crosshair','arrow/Home/End/Escape/Tab chart controls','touch details and narrow-screen positioning','native no-JavaScript chart descriptions','hourly and realtime','browser version drilldown','expanded report sorting/search/pagination','interval menu','custom comparisons and weekday matching','comparison and primary date forms preserve filters and report state','preset ranges exclude today','dropdown bounds and keyboard dismissal','comparison forms without JavaScript','ZIP export','responsive light/dark']},null,2));
  if(process.env.OWLYTICS_PARITY_DEMO) execFileSync(binary,['backup',resolve(process.env.OWLYTICS_PARITY_DEMO)],{env:{...process.env,OWLYTICS_DATABASE:database}});
  console.log('Report parity browser checks passed.');

@@ -127,7 +127,7 @@ fn completed_partial_weeks_and_months_have_labels_but_no_live_stroke() {
 fn only_current_intervals_are_dotted_and_future_dates_are_not_plotted() {
     let (report, range) = daily("2026-10-01", "2026-10-31", "2026-10-27T12:00:00Z");
     for (interval, count, label, dotted) in [
-        ("day", 27, "Oct 27, 2026", 1),
+        ("day", 27, "Tue, 27 Oct 2026", 1),
         ("week", 5, "Partial week of 26 Oct", 1),
         ("month", 1, "Partial of October 2026", 0),
     ] {
@@ -140,7 +140,7 @@ fn only_current_intervals_are_dotted_and_future_dates_are_not_plotted() {
             dotted
         );
         assert!(html.contains(&format!("data-date=\"{label}\"")));
-        assert!(!html.contains("data-date=\"Oct 28, 2026\""));
+        assert!(!html.contains("data-date=\"Wed, 28 Oct 2026\""));
     }
     let (mut report, range) = daily("2026-10-26", "2026-11-01", "2026-11-01T23:59:59Z");
     assert!(draw(&report, &range, "UTC", "week").contains("Partial week of 26 Oct"));
@@ -180,8 +180,8 @@ fn minute_axes_use_round_site_local_ticks_at_the_correct_dst_positions() {
         .collect();
     let html = draw(&report, &range, "America/New_York", "minute");
     assert_eq!(html.matches("class=\"chart-hit\"").count(), 1500);
-    assert!(html.contains("data-date=\"Nov 2, 01:00 EDT\""));
-    assert!(html.contains("data-date=\"Nov 2, 01:00 EST\""));
+    assert!(html.contains("data-date=\"Sun, 02 Nov 2025, 01:00 EDT\""));
+    assert!(html.contains("data-date=\"Sun, 02 Nov 2025, 01:00 EST\""));
     let axis = html
         .split("class=\"chart-labels chart-labels-positioned\"")
         .nth(1)
@@ -214,8 +214,8 @@ fn live_hour_and_completed_realtime_minutes_use_different_strokes() {
     let html = draw(&report, &range, "America/New_York", "hour");
     assert_eq!(html.matches("class=\"chart-hit\"").count(), 3);
     assert_eq!(html.matches("chart-incomplete").count(), 1);
-    assert!(html.contains("Nov 2, 01:00 EDT"));
-    assert!(html.contains("Nov 2, 01:00 EST"));
+    assert!(html.contains("Sun, 02 Nov 2025, 01:00 EDT"));
+    assert!(html.contains("Sun, 02 Nov 2025, 01:00 EST"));
     report.realtime = true;
     report.timeline_start = report.generated_at - 1800;
     report.timeline_end = report.generated_at;
@@ -266,5 +266,5 @@ async fn rolling_chart_retains_the_requested_observation_time() {
     );
     let html = super::chart(&report, &range, &query, &site("UTC"), None);
     assert_eq!(html.matches("chart-incomplete").count(), 1);
-    assert!(html.contains("data-date=\"Nov 2, 10:00 UTC\""));
+    assert!(html.contains("data-date=\"Sun, 02 Nov 2025, 10:00 UTC\""));
 }

@@ -347,6 +347,7 @@
     const previous = tooltip.querySelector('.chart-tooltip-previous');
     const change = tooltip.querySelector('small');
     const zoom = tooltip.querySelector('.chart-tooltip-zoom');
+    const hint = tooltip.querySelector('footer');
     let selected = null, tabStop = points[0], mode = '';
 
     function hide() {
@@ -361,13 +362,10 @@
       if (!selected) return;
       const bounds = chart.getBoundingClientRect();
       const x = Number(selected.dataset.x) * bounds.width / 1000;
-      const coordinate = selected.dataset.y || selected.dataset.previousY;
-      const y = coordinate ? Number(coordinate) * bounds.height / 300 : bounds.height / 2;
-      const width = tooltip.offsetWidth, height = tooltip.offsetHeight;
+      const width = tooltip.offsetWidth;
       const left = x + width + 12 <= bounds.width ? x + 12 : x - width - 12;
-      const top = y - height - 12 >= 4 ? y - height - 12 : y + 12;
       tooltip.style.left = `${Math.max(0, Math.min(left, bounds.width - width))}px`;
-      tooltip.style.top = `${Math.max(4, Math.min(top, bounds.height - height - 4))}px`;
+      tooltip.style.top = '0px';
     }
 
     function show(point, interaction) {
@@ -375,6 +373,7 @@
       const pinned = interaction === 'touch' || interaction === 'pinned';
       tooltip.setAttribute('role',pinned ? 'dialog' : 'tooltip');
       tooltip.setAttribute('aria-label','Chart details');
+      hint.hidden = pinned || interaction === 'keyboard';
       zoom.hidden = !pinned || !point.hasAttribute('href');
       if (!zoom.hidden) { zoom.href = point.getAttribute('href'); zoom.textContent = `View ${point.dataset.zoom}`; }
       if (selected === point) { place(); return; }
@@ -383,12 +382,17 @@
       point.setAttribute('tabindex', '0');
       tabStop = point;
       const data = point.dataset;
+      // Keep years and the site's clock. Only repeated DST hours need a zone
+      // in the compact tooltip; the full labels retain it for every interval.
+      const date = (label, clock, ambiguous) => clock && !ambiguous ? label.replace(/ [^ ]+$/, '') : label;
       current.hidden = !data.date;
-      current.querySelector('span').textContent = data.date;
-      current.querySelector('strong').textContent = data.value;
+      current.querySelector('span').textContent = date(data.date, data.clock, data.ambiguousClock);
+      current.querySelector('strong').textContent = data.displayValue || data.value;
+      current.querySelector('strong').title = data.value;
       previous.hidden = !data.previousDate;
-      previous.querySelector('span').textContent = data.previousDate;
-      previous.querySelector('strong').textContent = data.previousValue;
+      previous.querySelector('span').textContent = date(data.previousDate, data.previousClock, data.previousAmbiguousClock);
+      previous.querySelector('strong').textContent = data.previousDisplayValue || data.previousValue;
+      previous.querySelector('strong').title = data.previousValue;
       change.hidden = !data.change;
       change.textContent = data.change;
       change.className = data.tone;

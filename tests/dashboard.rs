@@ -315,9 +315,9 @@ async fn custom_comparison_counts_and_csv_use_the_same_calendar_intervals() {
     let query = "from=2025-02-01&to=2025-02-01&compare=custom&compare_from=2025-01-01&compare_to=2025-01-02&compare_match=weekday";
     let html = body(request(&app, &format!("/sites/1?{query}"), &cookie, None).await).await;
     assert!(html.contains("title=\"Jan 1 – Jan 2, 2025\""));
-    assert!(html.contains("data-date=\"Feb 1, 2025\" data-value=\"1\""));
-    assert!(html.contains("data-previous-date=\"Jan 1, 2025\" data-previous-value=\"10\""));
-    assert!(html.contains("data-previous-date=\"Jan 2, 2025\" data-previous-value=\"20\""));
+    assert!(html.contains("data-date=\"Sat, 01 Feb 2025\" data-value=\"1\""));
+    assert!(html.contains("data-previous-date=\"Wed, 01 Jan 2025\" data-previous-value=\"10\""));
+    assert!(html.contains("data-previous-date=\"Thu, 02 Jan 2025\" data-previous-value=\"20\""));
     assert_eq!(html.matches("class=\"chart-hit\"").count(), 2);
     assert!(
         !html.contains("Match day of week"),
@@ -698,7 +698,7 @@ async fn metrics_preserve_navigation_and_empty_reports_offer_the_right_next_step
     let html=body(request(&app,"/sites/1?from=2026-10-27&to=2026-10-27&metric=pageviews&page=%2Fpricing&browser=Safari",&cookie,None).await).await;
     assert!(html.contains("<span>Unique visitors</span><strong>1</strong>"));
     assert!(html.contains("<span>Total pageviews</span><strong>2</strong>"));
-    assert!(html.contains("Oct 27, 2026: 2 pageviews"));
+    assert!(html.contains("Tue, 27 Oct 2026: 2 pageviews"));
     assert!(html.contains("aria-label=\"Pageviews from"));
     assert!(html.contains("name=\"metric\" value=\"pageviews\""));
     assert!(html.contains("metric=pageviews&amp;page=%2Fpricing&amp;browser=Safari"));
@@ -1319,6 +1319,26 @@ async fn bounce_rate_comparisons_show_percentage_points_including_a_measured_zer
 }
 
 #[tokio::test]
+async fn isolated_comparison_values_remain_visible_between_unknown_imports() {
+    let (app, db, cookie, _) = fixture().await;
+    db.call(|c| c.execute_batch("INSERT INTO sites VALUES(1,'example.com','UTC',0);
+        INSERT INTO import_batches VALUES(1,1,'2025-02-01','2025-02-06',0);
+        INSERT INTO import_daily VALUES(1,'2025-02-01',1,5,10),(1,'2025-02-02',1,5,10),(1,'2025-02-03',1,5,10),(1,'2025-02-04',1,5,10),(1,'2025-02-05',1,5,10),(1,'2025-02-06',1,5,10);
+        INSERT INTO import_metrics VALUES(1,'2025-02-02','total','',1,7,7,2,100,NULL),(1,'2025-02-04','total','',1,5,5,1,100,NULL),(1,'2025-02-05','total','',1,5,5,1,100,NULL),(1,'2025-02-06','total','',1,5,5,1,100,NULL);")).await.unwrap();
+    let html = body(request(&app, "/sites/1?from=2025-02-04&to=2025-02-06&metric=visits&interval=day&compare=previous&compare_match=date", &cookie, None).await).await;
+    assert!(html.contains("<polyline class=\"chart-previous\" points=\"500.00,52.50\"/>"));
+    assert!(
+        html.contains("<path class=\"chart-point chart-point-previous\" d=\"M500.00 52.50h0\"/>"),
+        "A one-point polyline has no visible stroke; an isolated known comparison needs a dot"
+    );
+    assert_eq!(
+        html.matches("data-previous-value=\"—\"").count(),
+        2,
+        "Missing import metrics remain unknown, not a line to zero"
+    );
+}
+
+#[tokio::test]
 async fn comparison_chart_keeps_unequal_dst_series_on_one_axis() {
     let (app, db, cookie, _) = fixture().await;
     db.call(|c| {
@@ -1352,11 +1372,13 @@ async fn comparison_chart_keeps_unequal_dst_series_on_one_axis() {
         ),
         "Small counts have distinct integer axis labels"
     );
-    assert!(points[23].contains("data-date=\"Nov 3, 23:00 EST\""));
+    assert!(points[23].contains("data-date=\"Mon, 03 Nov 2025, 23:00 EST\""));
     assert!(points[23].contains("data-x=\"958.33\" data-y=\"20.00\""));
     assert!(points[24].contains("data-date=\"\" data-value=\"—\""));
     assert!(
-        points[24].contains("data-previous-date=\"Nov 2, 23:00 EST\" data-previous-value=\"1\"")
+        points[24].contains(
+            "data-previous-date=\"Sun, 02 Nov 2025, 23:00 EST\" data-previous-value=\"1\""
+        )
     );
     assert!(points[24].contains("data-x=\"1000.00\" data-y=\"\" data-previous-y=\"20.00\""));
     assert!(points[24].contains("data-change=\"\""));
@@ -1398,8 +1420,8 @@ async fn filtered_bounce_rates_stay_weighted_in_charts_comparisons_and_csv() {
             body(request(&app, &format!("{base}&interval={interval}"), &cookie, None).await).await;
         assert!(html.contains("<span>Bounce rate</span><strong>33%</strong>"));
         if interval == "day" {
-            assert!(html.contains("Oct 26, 2026: 100% bounce rate"));
-            assert!(html.contains("Oct 27, 2026: 0% bounce rate"));
+            assert!(html.contains("Mon, 26 Oct 2026: 100% bounce rate"));
+            assert!(html.contains("Tue, 27 Oct 2026: 0% bounce rate"));
         } else {
             assert!(html.contains("33% bounce rate"));
             assert!(
@@ -1537,7 +1559,7 @@ async fn page_filters_switch_engagement_metrics_charts_and_exports() {
     )
     .await;
     assert_eq!(html.matches("class=\"chart-line\"").count(), 2);
-    assert!(html.contains("Oct 21, 2025: — time on page"));
+    assert!(html.contains("Tue, 21 Oct 2025: — time on page"));
 }
 
 #[tokio::test]

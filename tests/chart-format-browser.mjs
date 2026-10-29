@@ -24,23 +24,23 @@ c.commit()
       await visit(base+'&interval=hour');
       let labels=await page.locator('.chart-hit').evaluateAll(es=>es.map(e=>e.dataset.date));
       assert.equal(labels.length,25);
-      for(const zone of ['EDT','EST']) assert.ok(labels.includes(`Nov 2, ${twelve?'1am':'01:00'} ${zone}`));
-      assert.ok(labels.includes(`Nov 2, ${twelve?'12pm':'12:00'} EST`));
+      for(const zone of ['EDT','EST']) assert.ok(labels.includes(`Sun, 02 Nov 2025, ${twelve?'1am':'01:00'} ${zone}`));
+      assert.ok(labels.includes(`Sun, 02 Nov 2025, ${twelve?'12pm':'12:00'} EST`));
       assert.equal(await page.locator('.chart-ticks>text').first().textContent(),twelve?'12am':'00:00');
       const first=page.locator('.chart-hit').first();
       assert.ok((await first.getAttribute('aria-label')).includes(twelve?'12am EDT':'00:00 EDT'));
       await visit(base+'&interval=minute');
       labels=await page.locator('.chart-hit').evaluateAll(es=>es.map(e=>e.dataset.date));
       assert.equal(labels.length,1500);
-      for(const zone of ['EDT','EST']) assert.ok(labels.includes(`Nov 2, ${twelve?'1:00am':'01:00'} ${zone}`));
-      assert.ok(labels.includes(`Nov 2, ${twelve?'12:00pm':'12:00'} EST`));
+      for(const zone of ['EDT','EST']) assert.ok(labels.includes(`Sun, 02 Nov 2025, ${twelve?'1:00am':'01:00'} ${zone}`));
+      assert.ok(labels.includes(`Sun, 02 Nov 2025, ${twelve?'12:00pm':'12:00'} EST`));
       const repeated=page.locator('.chart-hit[data-clock="01:00"]');
       await repeated.nth(1).focus();
-      assert.equal(await page.locator('.chart-tooltip-current span').innerText(),`Nov 2, ${twelve?'1:00am':'01:00'} EST`);
+      assert.equal(await page.locator('.chart-tooltip-current span').innerText(),`Sun, 02 Nov 2025, ${twelve?'1:00am':'01:00'} EST`);
       await visit('/sites/2?period=day&date=2025-11-03&interval=hour&metric=pageviews&compare=previous&compare_match=date');
       const extra=page.locator('.chart-hit').last();
       assert.equal(await extra.getAttribute('data-date'),'');
-      assert.equal(await extra.getAttribute('data-previous-date'),`Nov 2, ${twelve?'11pm':'23:00'} EST`);
+      assert.equal(await extra.getAttribute('data-previous-date'),`Sun, 02 Nov 2025, ${twelve?'11pm':'23:00'} EST`);
       await extra.focus();assert.equal(await page.locator('.chart-tooltip-current').isVisible(),false);
 
       await visit('/sites/11?from=2024-02-03&to=2024-02-14&interval=week&metric=pageviews&compare=off');
@@ -77,7 +77,7 @@ c.commit()
   try {
     const page=await noScript.newPage();await page.goto(origin+'/sites/2?period=day&date=2025-11-02&interval=hour&metric=pageviews&compare=off');
     assert.equal(await page.locator('.chart-hit title').count(),25);
-    assert.match(await page.locator('.chart-hit title').first().textContent(),/Nov 2, 00:00 EDT/);
+    assert.match(await page.locator('.chart-hit title').first().textContent(),/Sun, 02 Nov 2025, 00:00 EDT/);
     assert.equal(await page.locator('.chart-ticks>text').first().textContent(),'00:00');
   } finally {await noScript.close();}
 }

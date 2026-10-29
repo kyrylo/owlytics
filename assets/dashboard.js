@@ -204,8 +204,9 @@
   for (const [key, element] of shortcuts) element.setAttribute('aria-keyshortcuts', ({arrowleft:'ArrowLeft',arrowright:'ArrowRight'})[key] || key.toUpperCase());
   document.addEventListener('keydown', event => {
     if (event.defaultPrevented || event.repeat || event.metaKey || event.ctrlKey || event.altKey || event.target.closest('.row-tooltip,input,textarea,select,[contenteditable]:not([contenteditable=false])')) return;
-    if (['ArrowLeft','ArrowRight'].includes(event.key) && (event.shiftKey || event.target.closest('.chart') || document.querySelector('.filter-picker,main details[open]'))) return;
     if (event.key === '/' && reportSearch) { event.preventDefault(); reportSearch.focus(); reportSearch.select(); return; }
+    if (document.querySelector('.report-overlay')) return;
+    if (['ArrowLeft','ArrowRight'].includes(event.key) && (event.shiftKey || event.target.closest('.chart') || document.querySelector('.filter-picker,main details[open]'))) return;
     const target = shortcuts.get(event.key.toLowerCase());
     if (!target) return;
     event.preventDefault();
@@ -392,6 +393,8 @@
   initializeRowComparisons(signal);
   document.addEventListener('keydown', event => {
     if (event.key !== 'Escape' || event.defaultPrevented) return;
+    const close = document.querySelector('.close-report');
+    if (close) { event.preventDefault(); close.click(); return; }
     const done = document.querySelector('.filter-done');
     if (done) { event.preventDefault(); follow(done); }
     else if (!event.target.closest('input,textarea,select')) {
@@ -423,12 +426,13 @@
   }
   function focusState() {
     const element = document.activeElement;
-    if (!element?.closest('.filter-picker')) return null;
+    if (!element?.closest('.filter-picker,.report-search')) return null;
     return {id:element.id, value:element.type === 'checkbox' ? element.value : null,
       start:element.selectionStart, end:element.selectionEnd};
   }
   function render(html, focus) {
-    const typing = document.activeElement?.id === 'filter-search' ? document.activeElement.value : null;
+    const active = document.activeElement;
+    const typing = ['filter-search','report-search'].includes(active?.id) ? {id:active.id,value:active.value} : null;
     const doc = new DOMParser().parseFromString(html, 'text/html');
     const main = doc.querySelector('main.container');
     if (!main) throw new Error('Missing dashboard');
@@ -437,7 +441,7 @@
     document.title = doc.title;
     renderedURL = new URL(currentURL);
     initialize();
-    if (typing !== null && main.querySelector('#filter-search')) main.querySelector('#filter-search').value = typing;
+    if (typing && main.querySelector(`#${typing.id}`)) main.querySelector(`#${typing.id}`).value = typing.value;
     let target;
     if (focus?.value !== null && focus?.value !== undefined) {
       target = [...main.querySelectorAll('.filter-values input[type=checkbox]')].find(input=>input.value===focus.value);
@@ -468,6 +472,11 @@
         params.delete(key);for(const value of target.searchParams.getAll(key)) params.append(key,value);
       }
     }
+    // Closing a report also discards a search that finished after its close
+    // link was rendered. It must not leak into the dashboard underneath.
+    if (before.searchParams.has('detail') && !target.searchParams.has('detail')) {
+      for (const key of ['detail','search','sort','order','offset']) params.delete(key);
+    }
     for(const key of dimensions) params.delete(key);
     params.delete('filters');if(merged.size) params.set('filters',JSON.stringify([...merged.values()]));
     if(!target.searchParams.has('filter')) for(const key of ['filter','filter_mode','filter_op','filter_search','filter_offset']) params.delete(key);
@@ -482,7 +491,7 @@
   }
   function editingReport() {
     const search = document.querySelector('.report-search input[type=search]');
-    return document.querySelector('.filter-picker,main details[open],.chart-tooltip:not([hidden])') || document.activeElement?.closest('main a,main button,main input,main select,main textarea,main summary,main .chart-hit') || search && search.value !== search.defaultValue;
+    return document.querySelector('.filter-picker,.report-overlay,main details[open],.chart-tooltip:not([hidden])') || document.activeElement?.closest('main a,main button,main input,main select,main textarea,main summary,main .chart-hit') || search && search.value !== search.defaultValue;
   }
   async function refreshRealtime() {
     if (!isRealtime() || document.hidden || refreshRequest || running || jobs.length) return;
@@ -523,6 +532,9 @@
           const fresh = [...document.querySelectorAll('a[data-filter-link]')].find(link=>link.dataset.filterLink===job.key);
           target = new URL(fresh?.href || job.href);
           if (/^(open:|values:)/.test(job.key)) focus = {id:'filter-search',value:null,start:0,end:0};
+        } else if (job.type === 'report-search') {
+          if (job.value) target.searchParams.set('search',job.value); else target.searchParams.delete('search');
+          target.searchParams.delete('offset');
         } else if (job.type === 'search') {
           target.searchParams.set('filter',job.key);
           target.searchParams.set('filter_search',job.value);
@@ -546,11 +558,11 @@
         const html = await response.text();
         currentURL = new URL(response.url);
         if (currentURL.pathname === '/login') { location.assign(currentURL); return; }
-        history[job.type === 'search' ? 'replaceState' : 'pushState'](null,'',currentURL);
+        history[['search','report-search'].includes(job.type) ? 'replaceState' : 'pushState'](null,'',currentURL);
         // Keep the live checkboxes/search text while queued changes are sent.
         // Links need freshly rendered destinations, including parent removal.
         if (!jobs.length || jobs[0].type === 'link' || jobs[0].type === 'navigation') {
-          if (job.type === 'apply' && !job.operator) focus = focusState();
+          if (job.type === 'apply' && !job.operator || job.type === 'report-search') focus = focusState();
           render(html, focus);
         }
       }
@@ -571,6 +583,7 @@
     const form = event.target;
     if (form.matches('.filter-apply')) { event.preventDefault(); apply(form,event.submitter); }
     else if (form.matches('.filter-search')) { event.preventDefault(); clearTimeout(searchTimer); search(form.querySelector('[name=filter_search]')); }
+    else if (form.matches('.report-search')) { event.preventDefault(); clearTimeout(searchTimer); search(form.querySelector('[name=search]')); }
     else if (running && form.method.toLowerCase() === 'get' && form.closest('main.container') && !form.target) {
       event.preventDefault(); clearTimeout(searchTimer);
       const target = new URL(form.action || location.href);
@@ -582,11 +595,12 @@
     if (event.target.matches('.filter-values input[type=checkbox]')) apply(event.target.form);
   });
   function search(input) {
+    if (input.form.matches('.report-search')) { enqueue({type:'report-search',value:input.value}); return; }
     const form = new FormData(input.form);
     enqueue({type:'search',key:form.get('filter'),value:input.value,start:input.selectionStart,end:input.selectionEnd});
   }
   document.addEventListener('input', event => {
-    if (!event.target.matches('.filter-search input')) return;
+    if (!event.target.matches('.filter-search input,.report-search input')) return;
     clearTimeout(searchTimer);
     searchTimer = setTimeout(()=>search(event.target),200);
   });
@@ -595,6 +609,7 @@
     if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     rememberChoice(link);
     refreshRequest?.abort();
+    clearTimeout(searchTimer);
     if (!link.hasAttribute('data-filter-link')) {
       if (running && !link.getAttribute('target') && !link.hasAttribute('download')) {
         event.preventDefault();clearTimeout(searchTimer);

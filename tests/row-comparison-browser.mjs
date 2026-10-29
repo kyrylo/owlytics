@@ -145,7 +145,7 @@ c.commit()
     const value=page.locator('.panel-source [data-row-comparison][data-name="Grow"]');
     assert.match(await value.getAttribute('title'),/2 Feb 2025: 3\n1 Feb 2025: 1\nUp 200 percent/);
     await page.locator('.panel-source .expand-report').click();
-    const count=page.locator('[data-row-comparison][data-name="Grow"][data-heading="Visitors"]');
+    const count=page.locator('.expanded-report [data-row-comparison][data-name="Grow"][data-heading="Visitors"]');
     await count.focus();assert.match(await count.getAttribute('aria-label'),/Up 200 percent/);
   } finally {await noScript.close();}
 }

@@ -52,17 +52,17 @@ c.commit()
       assert.equal(await page.locator('.report-icon img,.report-icon script').count(),0);
       await page.screenshot({path:join(output,`source-icons-${scheme}-${width}.png`),fullPage:true});
       const sizes=await rows.locator('.report-icon').evaluateAll(es=>es.map(e=>({w:e.getBoundingClientRect().width,h:e.getBoundingClientRect().height})));
-      assert.ok(sizes.every(({w,h})=>w===18&&h===18));
+      assert.ok(sizes.every(({w,h})=>w===16&&h===16));
       assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
     }
     // Icons do not change the label or the link's audience; URL paths use the host icon.
     await page.setViewportSize({width:1440,height:1050});
-    await page.getByRole('link',{name:'GitHub',exact:true}).click();
+    await page.locator('.expanded-report').getByRole('link',{name:'GitHub',exact:true}).click();
     assert.equal(await page.locator('.panel-referrer .brand-github').count(),1);
     assert.match(await page.locator('.panel-referrer').innerText(),/github.com\/article/);
     assert.equal(await page.locator('.metrics .metric').first().locator('strong').textContent(),'1');
     await page.goto(base);
-    for(const [tab,panel,brands] of [['Browsers','browser',['googlechrome','safari','firefox','microsoftedge','opera','samsunginternet','brave','generic']],['Operating systems','os',['apple','windows','android','linux','ubuntu','googlechrome','device']],['Size','device',['device']]]) {
+    for(const [tab,panel,brands] of [['Browsers','browser',['googlechrome','safari','firefox','microsoftedge','opera','samsunginternet','brave','generic']],['OS','os',['apple','windows','android','linux','ubuntu','googlechrome','device']],['Devices','device',['device']]]) {
       await page.getByRole('link',{name:tab,exact:true}).click();
       for(const brand of brands) assert.ok(await page.locator(`.panel-${panel} .brand-${brand}`).count(),`${panel}: ${brand}`);
       await page.screenshot({path:join(output,`software-icons-${panel}.png`),fullPage:true});

@@ -449,6 +449,37 @@ fn metric_value(metric: Metric, row: &Row) -> String {
     metric_display(metric, row.available(metric).then(|| metric.value(row)))
 }
 
+fn headline_value(metric: Metric, row: &Row) -> String {
+    if row.available(metric)
+        && matches!(
+            metric,
+            Metric::Visitors | Metric::Pageviews | Metric::Visits
+        )
+    {
+        compact_number(metric.value(row) as i64)
+    } else {
+        metric_value(metric, row)
+    }
+}
+
+fn headline_dates(range: &Range, today: chrono::NaiveDate) -> String {
+    use chrono::Datelike;
+    let format = if range.from.year() != today.year() || range.to.year() != today.year() {
+        "%-d %b %Y"
+    } else {
+        "%-d %b"
+    };
+    if range.from == range.to {
+        range.from.format(format).to_string()
+    } else {
+        format!(
+            "{} - {}",
+            range.from.format(format),
+            range.to.format(format)
+        )
+    }
+}
+
 pub(crate) fn hidden_state(
     site: &Site,
     range: &Range,
@@ -862,59 +893,87 @@ fn panel(
     report: &analytics::Report,
     comparison: Option<&TableComparison<'_>>,
 ) -> String {
+    let background_selected = selected;
     let selected = query
         .detail
         .as_deref()
         .filter(|d| tabs.iter().any(|(_, key, _)| key == d))
         .unwrap_or(selected);
-    let (_, dimension, rows) = tabs
+    let (title, dimension, rows) = tabs
         .iter()
         .find(|(_, key, _)| *key == selected)
         .unwrap_or(&tabs[0]);
     let expanded = *dimension != "map" && query.detail.as_deref() == Some(*dimension);
-    let mut out = format!(
-        "<section class=\"panel report-panel panel-{dimension}{}\"><div class=\"report-tabs\">",
-        if expanded { " expanded-report" } else { "" }
-    );
-    if group == "sources_tab" {
-        out.push_str(&source_tabs(site, range, query, dimension));
-    } else {
-        for (label, key, _) in tabs {
-            let current = if key == dimension {
-                " aria-current=\"page\""
-            } else {
-                ""
-            };
-            let _ = write!(
-                out,
-                "<a data-preference=\"{group}\"{current} href=\"{}\">{label}</a>",
-                escape(&link(site, range, query, Some((group, Some(key)))))
-            );
-        }
-    }
-    let _ = write!(
-        out,
-        "<a class=\"expand-report\" href=\"{}\" aria-label=\"{} report\">{}</a></div>",
-        escape(&link(
+    let mut out = String::new();
+    if expanded {
+        let mut background = query.clone();
+        background.detail = None;
+        background.search = None;
+        background.sort = None;
+        background.order = None;
+        background.offset = None;
+        out.push_str(&panel(
+            group,
+            tabs,
+            background_selected,
             site,
             range,
-            query,
-            Some((
-                "detail",
-                if expanded {
-                    None
+            &background,
+            report,
+            comparison,
+        ));
+        let close = escape(&link(site, range, query, Some(("detail", None))));
+        let _ = write!(
+            out,
+            "<div class=\"report-overlay\"><a class=\"report-backdrop\" href=\"{close}\" tabindex=\"-1\"></a><section class=\"panel report-panel panel-{dimension} expanded-report\"><header class=\"report-heading\"><h2>{title}</h2>"
+        );
+        out.push_str(&report_search(site, range, query));
+        let _ = write!(
+            out,
+            "<a class=\"close-report\" href=\"{close}\" aria-label=\"Close expanded report\">{}</a></header>",
+            crate::icons::control("close")
+        );
+    } else {
+        let _ = write!(
+            out,
+            "<section class=\"panel report-panel panel-{dimension}\"><div class=\"report-tabs\">"
+        );
+        if group == "sources_tab" {
+            out.push_str(&source_tabs(site, range, query, dimension));
+        } else {
+            for (label, key, _) in tabs {
+                let current = if key == dimension {
+                    " aria-current=\"page\""
                 } else {
+                    ""
+                };
+                let _ = write!(
+                    out,
+                    "<a data-preference=\"{group}\"{current} href=\"{}\">{label}</a>",
+                    escape(&link(site, range, query, Some((group, Some(key)))))
+                );
+            }
+        }
+        let _ = write!(
+            out,
+            "<a class=\"expand-report\" href=\"{}\" aria-label=\"{} report\">{}</a></div>",
+            escape(&link(
+                site,
+                range,
+                query,
+                Some((
+                    "detail",
                     Some(if *dimension == "map" {
                         "country"
                     } else {
                         dimension
                     })
-                }
-            ))
-        )),
-        if expanded { "Close expanded" } else { "Expand" },
-        if expanded { "×" } else { "⛶" }
-    );
+                ))
+            )),
+            "Expand",
+            crate::icons::control("expand")
+        );
+    }
     let import_dimension = if *dimension == "map" {
         "country"
     } else {
@@ -964,7 +1023,7 @@ fn panel(
         out.push_str(&expanded_table(
             dimension, label, rows, site, range, query, report, comparison,
         ));
-        out.push_str("</section>");
+        out.push_str("</section></div>");
         return out;
     }
     let _ = write!(
@@ -990,10 +1049,7 @@ fn panel(
         });
     }
     let max = rows.iter().map(count).max().unwrap_or(1).max(1) as f64;
-    for (index, row) in rows.iter().enumerate() {
-        if index == 9 && !expanded {
-            out.push_str("<details class=\"more-rows\"><summary>View all</summary>");
-        }
+    for row in rows.iter().take(9) {
         let name = crate::report_table::label(dimension, &row.name);
         let percentage = crate::report_table::display(row, "percentage");
         let image = if crate::acquisition::is_campaign(dimension)
@@ -1039,10 +1095,25 @@ fn panel(
             escape(&name)
         );
     }
-    if rows.len() > 9 && !expanded {
-        out.push_str("</details>");
+    if rows.len() > 9 {
+        let _ = write!(
+            out,
+            "<a class=\"more-rows-link\" href=\"{}\">View all</a>",
+            escape(&link(site, range, query, Some(("detail", Some(dimension)))))
+        );
     }
     out.push_str("</section>");
+    out
+}
+
+fn report_search(site: &Site, range: &Range, query: &ReportQuery) -> String {
+    let mut out = String::from("<form class=\"report-search\" method=\"get\">");
+    out.push_str(&hidden_state(site, range, query, &["search", "offset"]));
+    let _ = write!(
+        out,
+        "<input id=\"report-search\" type=\"search\" name=\"search\" aria-label=\"Search report\" placeholder=\"Press / to search\" value=\"{}\"><button class=\"quiet\">Search</button></form>",
+        escape(query.search.as_deref().unwrap_or(""))
+    );
     out
 }
 
@@ -1056,12 +1127,8 @@ fn expanded_table(
     report: &analytics::Report,
     comparison: Option<&TableComparison<'_>>,
 ) -> String {
-    let mut out = String::from("<form class=\"report-search\" method=\"get\">");
-    out.push_str(&hidden_state(site, range, query, &["search", "offset"]));
-    let _ = write!(
-        out,
-        "<input type=\"search\" name=\"search\" aria-label=\"Search report\" placeholder=\"Search…\" value=\"{}\"><button class=\"quiet\">Search</button></form><div class=\"report-table-scroll\" tabindex=\"0\" role=\"region\" aria-label=\"{} report\"><table class=\"report-table\"><thead><tr>",
-        escape(query.search.as_deref().unwrap_or("")),
+    let mut out = format!(
+        "<div class=\"report-table-scroll\" tabindex=\"0\" role=\"region\" aria-label=\"{} report\"><table class=\"report-table\"><thead><tr>",
         escape(label)
     );
     let columns = crate::report_table::columns(dimension, report.breakdown_pageviews);
@@ -2098,7 +2165,8 @@ fn date_controls(
             .unwrap_or_else(|| range_label(range))
     });
     let mut body = format!(
-        "<details class=\"dropdown date-picker\" name=\"dashboard-menu\"><summary>▦ <span>{}</span></summary><div class=\"dropdown-content\">",
+        "<details class=\"dropdown date-picker\" name=\"dashboard-menu\"><summary>{}<span>{}</span></summary><div class=\"dropdown-content\">",
+        crate::icons::control("calendar"),
         escape(&label)
     );
     let menu_link = |key, value: &str, label: &str, active| {
@@ -2220,8 +2288,9 @@ fn date_controls(
     };
     let _ = write!(
         body,
-        "<details class=\"dropdown comparison-picker\" name=\"dashboard-menu\"><summary title=\"{}\">vs. <span>{}</span><span class=\"chevron\">⌄</span></summary><div class=\"dropdown-content\">",
+        "<span class=\"comparison-versus\">vs</span><details class=\"dropdown comparison-picker\" name=\"dashboard-menu\"><summary title=\"{}\">{}<span>{}</span></summary><div class=\"dropdown-content\">",
         escape(&range_label(previous)),
+        crate::icons::control("calendar"),
         escape(&label)
     );
     for (value, label) in [("previous", "Previous period"), ("year", "Year over year")] {
@@ -2723,20 +2792,19 @@ pub(crate) async fn show(
             ""
         };
         let available = report.totals.available(metric);
-        let value = if available {
-            if matches!(
-                metric,
-                Metric::Visitors | Metric::Pageviews | Metric::Visits
-            ) {
-                compact_number(metric.value(&report.totals) as i64)
-            } else {
-                metric_value(metric, &report.totals)
-            }
-        } else {
-            "—".into()
-        };
+        let value = headline_value(metric, &report.totals);
         let mut trend = String::new();
+        let mut comparison = String::new();
         if let Some(old) = previous.as_ref() {
+            let _ = write!(
+                comparison,
+                "<small class=\"metric-date\" title=\"{}\">{}</small><div class=\"metric-previous\"><b>{}</b><small class=\"metric-date\" title=\"{}\">{}</small></div>",
+                escape(&range_label(&range)),
+                headline_dates(&range, site.today()),
+                headline_value(metric, &old.totals),
+                escape(&range_label(&previous_range)),
+                headline_dates(&previous_range, site.today()),
+            );
             if let Some(change) = MetricChange::between(
                 metric == Metric::BounceRate,
                 available.then(|| metric.value(&report.totals)),
@@ -2760,7 +2828,7 @@ pub(crate) async fn show(
         }
         let _ = write!(
             body,
-            "<div><a class=\"metric\"{current} data-preference=\"metric\" data-available=\"{available}\" data-value=\"{}\" href=\"{}\" aria-label=\"Show {}\"><span>{label}</span><strong>{value}</strong>{trend}</a></div>",
+            "<div><a class=\"metric\"{current} data-preference=\"metric\" data-available=\"{available}\" data-value=\"{}\" href=\"{}\" aria-label=\"Show {}\"><span>{label}</span><strong>{value}</strong>{trend}{comparison}</a></div>",
             metric.value(&report.totals),
             escape(&link(
                 &site,
@@ -2921,13 +2989,9 @@ pub(crate) async fn show(
         if query.exact_filter("os").is_some() {
             ("OS versions", "os_version", report.os_versions.as_slice())
         } else {
-            (
-                "Operating systems",
-                "os",
-                report.operating_systems.as_slice(),
-            )
+            ("OS", "os", report.operating_systems.as_slice())
         },
-        ("Size", "device", report.devices.as_slice()),
+        ("Devices", "device", report.devices.as_slice()),
     ];
     let selected_device = match query.devices_tab.as_deref().unwrap_or(device_tabs[0].1) {
         "browser" if query.exact_filter("browser").is_some() => "browser_version",

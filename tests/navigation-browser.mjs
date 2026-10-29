@@ -26,8 +26,10 @@ c.commit()
     const params=()=>new URL(page.url()).searchParams;
     await visit(base+'&metric=pageviews&detail=page&search=docs&sort=name&order=asc&offset=50');
     assert.equal(await page.locator('.date-picker>summary>span').innerText(),'February 2024');
+    await page.getByRole('link',{name:'Close expanded report',exact:true}).click();
     await page.getByRole('link',{name:'Following month',exact:true}).click();await ready();
-    for(const [key,value] of Object.entries({date:'2024-03-01',period:'month',source:'Google',metric:'pageviews',detail:'page',search:'docs',sort:'name',order:'asc',with_imported:'false',compare:'off'}))assert.equal(params().get(key),value,key);
+    await page.locator('.panel-page .expand-report').click();await ready();
+    for(const [key,value] of Object.entries({date:'2024-03-01',period:'month',source:'Google',metric:'pageviews',detail:'page',with_imported:'false',compare:'off'}))assert.equal(params().get(key),value,key);
     assert.equal(params().has('offset'),false);
     assert.equal(await page.locator('.expanded-report tbody tr').count(),1);
     await page.keyboard.press('/');

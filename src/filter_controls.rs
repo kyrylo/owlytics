@@ -9,8 +9,9 @@ use crate::{
 use std::fmt::Write;
 
 pub(crate) fn menu(site: &Site, range: &Range, query: &ReportQuery) -> String {
-    let mut html = String::from(
-        "<details class=\"dropdown filter-menu-toggle\" name=\"dashboard-menu\"><summary>☷ Filter</summary><div class=\"dropdown-content filter-menu\">",
+    let mut html = format!(
+        "<details class=\"dropdown filter-menu-toggle\" name=\"dashboard-menu\"><summary>{}Filter</summary><div class=\"dropdown-content filter-menu\">",
+        crate::icons::control("filter"),
     );
     for (group, dimensions) in [
         ("Page", &["page", "entry", "exit"][..]),

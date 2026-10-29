@@ -24,6 +24,8 @@ import {checkCrossdayReports} from '../tests/crossday-browser.mjs';
 import {checkEngagementFocus} from '../tests/engagement-focus-browser.mjs';
 import {checkReportWindows} from '../tests/report-windows-browser.mjs';
 import {checkReportPercentages} from '../tests/report-percentages-browser.mjs';
+import {checkReportOverlay} from '../tests/report-overlay-browser.mjs';
+import {checkHeadlineComparisons} from '../tests/headline-comparison-browser.mjs';
 const {chromium}=createRequire(import.meta.url)('playwright');
 const folder=mkdtempSync(join(tmpdir(),'owlytics-parity-'));
 const database=join(folder,'test.sqlite');
@@ -170,6 +172,7 @@ c.commit()
  await page.locator('.panel-country .expand-report').click();
  await page.locator('.expanded-report').getByRole('link',{name:'Bounce rate',exact:true}).click();
  assert.equal(new URL(page.url()).searchParams.get('sort'),'bounce_rate');
+ await page.getByRole('link',{name:'Close expanded report',exact:true}).click();
  await page.getByRole('link',{name:'Map',exact:true}).click();
  assert.equal(await page.locator('.expanded-report').count(),0);
  assert.equal(await page.locator('.country-map').count(),1);
@@ -182,7 +185,7 @@ c.commit()
  assert.match(await page.locator('.metric[aria-current=true] strong').innerText(),/%$/);
  await screenshot('page-engagement');
  await page.goto(`${origin}/sites/1?period=28d&compare=previous&compare_match=date`);
- for(const [name,selector] of [['Entry pages','.panel-entry'],['Exit pages','.panel-exit'],['Regions','.panel-region'],['Cities','.panel-city'],['Operating systems','.panel-os'],['Size','.panel-device']]) {
+ for(const [name,selector] of [['Entry pages','.panel-entry'],['Exit pages','.panel-exit'],['Regions','.panel-region'],['Cities','.panel-city'],['OS','.panel-os'],['Devices','.panel-device']]) {
    await page.getByRole('link',{name,exact:true}).click();assert.equal(await page.locator(selector).count(),1);assert.ok(await page.locator(`${selector} .data-row`).count());
  }
  await screenshot('report-tabs');
@@ -199,7 +202,7 @@ c.commit()
  assert.match(await page.locator('.chart-hit').first().getAttribute('aria-label'),/00:00 UTC/);
  await page.locator('.date-picker>summary').click();await page.getByRole('link',{name:'Realtime',exact:true}).click();assert.equal(await page.locator('.chart-hit').count(),30);
  await page.goto(`${origin}/sites/1?period=28d&compare=previous&compare_match=date`);await page.getByRole('link',{name:'Browsers',exact:true}).click();await page.locator('.panel-browser .data-row').filter({hasText:'Chrome'}).click();assert.equal(await page.locator('.panel-browser_version').count(),1);assert.ok((await page.locator('.panel-browser_version').innerText()).includes('130.0'));
- await page.getByRole('link',{name:'Operating systems',exact:true}).click();
+ await page.getByRole('link',{name:'OS',exact:true}).click();
  await page.locator('.panel-os .data-row').filter({hasText:'macOS'}).click();
  assert.ok((await page.locator('.panel-os_version').innerText()).includes('14.0'));
  await page.getByRole('link',{name:'Browser versions',exact:true}).click();
@@ -217,11 +220,15 @@ c.commit()
  await page.getByRole('link',{name:'Next →',exact:true}).click();
  assert.equal(new URL(page.url()).searchParams.get('offset'),'50');
  await page.getByRole('searchbox',{name:'Search report'}).fill('/article/109');
- await page.locator('.report-search').getByRole('button',{name:'Search',exact:true}).click();
+ await page.getByRole('searchbox',{name:'Search report'}).press('Enter');
+ await page.waitForURL(url=>url.searchParams.get('search')==='/article/109');
+ await page.waitForFunction(()=>!document.querySelector('main[aria-busy=true]'));
  assert.equal(await table.locator('tbody tr').count(),1);
  assert.equal(new URL(page.url()).searchParams.has('offset'),false);
  assert.match(await table.innerText(),/article\/109/);
+ await page.getByRole('link',{name:'Close expanded report',exact:true}).click();
  await page.getByRole('link',{name:'Entry pages',exact:true}).click();
+ await page.locator('.panel-entry .expand-report').click();
  assert.equal(await page.locator('.expanded-report.panel-entry').count(),1);
  assert.equal(new URL(page.url()).searchParams.has('search'),false);
  await page.goto(`${origin}/sites/1?detail=page`);
@@ -252,9 +259,9 @@ with zipfile.ZipFile(sys.argv[1]) as z:
 `,archive]);
  await page.goto(`${origin}/sites/1?period=28d&compare=previous&compare_match=date`);
  for(const scheme of ['light','dark']){await page.emulateMedia({colorScheme:scheme});for(const width of [1440,768,390,320]) {await page.setViewportSize({width,height:1050});await screenshot(`dashboard-${scheme}-${width}`);}}
- // Comparison forms must preserve the report state, including expanded tables.
+ // Comparison forms preserve the report state; tables open after date selection.
  const date=offset=>new Date(Date.now()+offset*86400000).toISOString().slice(0,10);
- const state={browser:'Chrome',metric:'pageviews',pages_tab:'entry',interval:'day',detail:'page',sort:'name',order:'asc',search:'article'};
+ const state={browser:'Chrome',metric:'pageviews',pages_tab:'entry',interval:'day',sort:'name',order:'asc',search:'article'};
  await page.goto(`${origin}/sites/1?${new URLSearchParams({...state,from:date(-7),to:date(-1),compare:'previous',offset:'50'})}`);
  await page.locator('.comparison-picker>summary').click();
  await page.getByText('Custom period',{exact:true}).click();
@@ -274,14 +281,19 @@ with zipfile.ZipFile(sys.argv[1]) as z:
  for(const [key,value] of Object.entries({...state,compare:'custom',compare_from:date(-45),compare_to:date(-36),from:date(-14),to:date(-1)}))assert.equal(params.get(key),value,key);
  assert.equal(params.has('offset'),false,'Changing the primary dates resets pagination');
  assert.equal(await hits.count(),14);
+ await page.getByRole('link',{name:'Top pages',exact:true}).click();
+ await page.locator('.panel-page .expand-report').click();
  await page.getByRole('searchbox',{name:'Search report'}).fill('/article/109');
- await page.locator('.report-search').getByRole('button',{name:'Search',exact:true}).click();
+ await page.getByRole('searchbox',{name:'Search report'}).press('Enter');
+ await page.waitForURL(url=>url.searchParams.get('search')==='/article/109');
+ await page.waitForFunction(()=>!document.querySelector('main[aria-busy=true]'));
  assert.equal(new URL(page.url()).searchParams.get('compare_from'),date(-45));
  assert.equal(await page.locator('.expanded-report tbody tr').count(),1);
+ await page.getByRole('link',{name:'Close expanded report',exact:true}).click();
  await page.getByRole('link',{name:'Clear filters',exact:true}).click();await page.waitForFunction(()=>!document.querySelector('main[aria-busy=true]'));
  params=new URL(page.url()).searchParams;
  assert.equal(params.has('browser'),false);
- for(const key of ['compare','compare_from','compare_to','metric','interval','detail','sort','order'])assert.equal(params.get(key),key==='compare'?'custom':key==='compare_from'?date(-45):key==='compare_to'?date(-36):state[key]);
+ for(const key of ['compare','compare_from','compare_to','metric','interval'])assert.equal(params.get(key),key==='compare'?'custom':key==='compare_from'?date(-45):key==='compare_to'?date(-36):state[key]);
  await page.locator('.comparison-picker>summary').click();
  await page.getByRole('link',{name:'Year over year',exact:true}).click();
  await page.locator('.comparison-picker>summary').click();
@@ -362,10 +374,12 @@ with zipfile.ZipFile(sys.argv[1]) as z:
  await checkVisitAttributes({context,browser,origin,database,output});
  await checkVisitBreakdowns({context,browser,origin,database,output});
  await checkReportPercentages({context,browser,origin,database,output});
+ await checkReportOverlay({context,browser,origin,output});
+ await checkHeadlineComparisons({context,browser,origin,database,output});
  await checkReportWindows({context,browser,origin,database,output});
  await checkCrossdayReports({context,browser,origin,database,output});
  await checkEngagementFocus({context,browser,origin,database,output});
- assert.deepEqual(errors,[]);writeFileSync(join(output,'results.json'),JSON.stringify({passed:true,checks:['browser focus/blur handling and three-second engagement buffering with controlled focus state','cross-date visitor and visit counts, calendar engagement, comparisons and interval CSVs in light/dark and without JavaScript','local-midnight visit overlap, exact date bounds and full-visit metrics across UTC, fractional offsets and DST','event-based percentage audiences, unavailable denominators and known-location tables/CSVs in light/dark and without JavaScript','visit-based report counts and matching expanded columns, CSVs, light/dark and no JavaScript',
+ assert.deepEqual(errors,[]);writeFileSync(join(output,'results.json'),JSON.stringify({passed:true,checks:['previous headline totals and dates with missing imported metrics across themes, mobile and no JavaScript','expanded report overlay, live search, scroll containment and closing during a pending search','browser focus/blur handling and three-second engagement buffering with controlled focus state','cross-date visitor and visit counts, calendar engagement, comparisons and interval CSVs in light/dark and without JavaScript','local-midnight visit overlap, exact date bounds and full-visit metrics across UTC, fractional offsets and DST','event-based percentage audiences, unavailable denominators and known-location tables/CSVs in light/dark and without JavaScript','visit-based report counts and matching expanded columns, CSVs, light/dark and no JavaScript',
   'inherited visit location and software filters, page intersections, dark mobile and no JavaScript','rolling-window traffic and complete-visit averages in light/dark and without JavaScript','row comparisons with exact prior values, missing history, keyboard and touch details','known-zero growth and empty-period charts; unavailable row duration and bounce changes','local source and software SVGs, alias identity, safe referrer hosts and site icons','responsive site picker, zero external icon requests and no-script site navigation','unfinished intervals and historical partial weeks/months','browser 12/24-hour clocks with preserved site timezone and DST distinctions','rounded SVG axis ticks at desktop, 390px and 360px, including no JavaScript','saved per-site metrics and report tabs; per-period intervals with calendar aliases and URL precedence','minute charts, DST offsets, imported-history fallback and custom interval defaults','realtime five/thirty-minute counts and empty audiences','realtime refresh timing, edit/visibility pauses, recovery, session expiry and navigation races','import switch across reports, suggestions and CSVs, including queued filters and no JavaScript','per-site date/comparison preferences with explicit URL overrides and optional storage','date, custom-range, interval and comparison shortcuts','comparison defaults and additional date presets','grouped filter chips, operators and immediate multi-selection','queued filter changes preserve search and chart navigation','filter suggestions and pagination retain selections','filter editing without JavaScript','Escape priority and filter history navigation','six metrics','report tabs','local country map and keyboard navigation without JavaScript','country/region/city drilldown and filter removal','location bounce-rate sorting and compact visitor percentages','no third-party location requests','chart comparison tooltip and crosshair','arrow/Home/End/Escape/Tab chart controls','touch details and narrow-screen positioning','native no-JavaScript chart descriptions','hourly and realtime','browser version drilldown','expanded report sorting/search/pagination','interval menu','custom comparisons and weekday matching','comparison and primary date forms preserve filters and report state','preset ranges exclude today','dropdown bounds and keyboard dismissal','comparison forms without JavaScript','ZIP export','responsive light/dark']},null,2));
  if(process.env.OWLYTICS_PARITY_DEMO) execFileSync(binary,['backup',resolve(process.env.OWLYTICS_PARITY_DEMO)],{env:{...process.env,OWLYTICS_DATABASE:database}});
  console.log('Report parity browser checks passed.');

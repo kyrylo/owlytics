@@ -220,7 +220,7 @@ try {
   assert.equal(await metric(page, 'Pageviews'), nativeViews);
   await screenshot(page, 'dashboard-single-day');
   await page.getByText('View all', {exact: true}).click();
-  const pricing = page.locator('.data-row').filter({has: page.locator('.row-label', {hasText: /^\/pricing$/})});
+  const pricing = page.locator('.expanded-report').getByRole('link',{name:'/pricing',exact:true});
   await pricing.click();
   assert.equal(await metric(page, 'Pageviews'), 2);
   assert.equal(new URL(page.url()).searchParams.get('metric'),'pageviews');

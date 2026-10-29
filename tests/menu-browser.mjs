@@ -27,7 +27,7 @@ export async function checkMenus({context,browser,origin,output}) {
     await visit('/sites/1');
     assert.equal(new URL(page.url()).searchParams.get('period'),'6mo');
     assert.equal(new URL(page.url()).searchParams.get('compare'),'year');
-    assert.match(await page.locator('.comparison-picker>summary').innerText(),/vs\.\s+Year over year/);
+    assert.match(await page.locator('.comparison-picker>summary').innerText(),/^Year over year$/);
     await visit('/sites/2');
     assert.equal(new URL(page.url()).search,'','Choices are scoped to the website');
     assert.equal(await page.locator('.comparison-picker').count(),0);

@@ -258,7 +258,7 @@ async fn date_defaults_use_site_history_and_invalid_comparisons_are_recoverable(
     let site = owlytics::analytics::site(&db, 1).await.unwrap().unwrap();
     let today = site.today();
     let html = body(request(&app, "/sites/1", &cookie, None).await).await;
-    assert!(html.contains("▦ <span>Today</span>"));
+    assert!(html.contains("</svg><span>Today</span>"));
     let target = report_link(&html, "Show pageviews");
     assert!(target.contains(&format!("from={today}&to={today}")));
     let yesterday = today.pred_opt().unwrap().to_string();
@@ -275,7 +275,7 @@ async fn date_defaults_use_site_history_and_invalid_comparisons_are_recoverable(
     .await
     .unwrap();
     let html = body(request(&app, "/sites/1", &cookie, None).await).await;
-    assert!(html.contains("▦ <span>Last 28 days</span>"));
+    assert!(html.contains("</svg><span>Last 28 days</span>"));
     let target = report_link(&html, "Show pageviews");
     assert!(target.contains(&format!(
         "from={}&to={}",
@@ -1756,7 +1756,7 @@ async fn comparison_defaults_are_off_and_enabled_comparisons_match_weekdays() {
         .await,
     )
     .await;
-    assert!(html.contains("title=\"Oct 27, 2025\">vs."));
+    assert!(html.contains("title=\"Oct 27, 2025\"><svg"));
     assert!(report_link(&html, ">Match day of week<span").contains("compare_match=weekday"));
     let html = body(
         request(
@@ -1768,7 +1768,7 @@ async fn comparison_defaults_are_off_and_enabled_comparisons_match_weekdays() {
         .await,
     )
     .await;
-    assert!(html.contains("title=\"Nov 2, 2025\">vs."));
+    assert!(html.contains("title=\"Nov 2, 2025\"><svg"));
 }
 
 #[tokio::test]

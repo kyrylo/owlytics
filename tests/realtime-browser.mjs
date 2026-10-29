@@ -110,6 +110,9 @@ c.execute("INSERT INTO events(site_id,received_at,day,visitor,request_id,path,so
       if(control==='input') {
         await visit(`${base}&detail=page`);
         await page.getByRole('searchbox',{name:'Search report'}).fill('unfinished');
+        await page.clock.fastForward(250);
+        await until(()=>Promise.resolve(new URL(page.url()).searchParams.get('search')==='unfinished'),'live report search finishes');
+        await ready();
       }
       const before=fetches.length;
       await page.clock.fastForward(30000);
@@ -120,8 +123,8 @@ c.execute("INSERT INTO events(site_id,received_at,day,visitor,request_id,path,so
       await page.mouse.move(0,0);await blur();
       if(control==='input') {
         await page.clock.fastForward(30000);
-        assert.equal(fetches.length,before,'An unfinished search also pauses after blur');
-        await page.getByRole('searchbox',{name:'Search report'}).fill('');await blur();
+        assert.equal(fetches.length,before,'An expanded report also pauses after blur');
+        await page.getByRole('link',{name:'Close expanded report',exact:true}).click();await ready();await blur();
       }
       await refresh();
     }

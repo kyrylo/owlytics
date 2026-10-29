@@ -2,6 +2,7 @@
 // Real-browser checks with an isolated database, owner, visitor and local website.
 // Install Playwright separately; it is never part of the application runtime.
 import assert from 'node:assert/strict';
+import {selectCalendarRange} from '../tests/calendar-helpers.mjs';
 import {spawn, execFileSync} from 'node:child_process';
 import {mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync} from 'node:fs';
 import {createServer} from 'node:http';
@@ -228,16 +229,12 @@ try {
   assert.equal(await metric(page, 'Pageviews'), nativeViews);
   await page.locator('.date-picker > summary').click();
   await page.getByText('Custom range', {exact:true}).click();
-  await page.getByLabel('From', {exact: true}).fill(from);
-  await page.getByLabel('To', {exact: true}).fill(to);
-  await page.getByRole('button', {name: 'Apply', exact: true}).click();
+  await selectCalendarRange(page,from,to);
   assert.equal(new URL(page.url()).searchParams.get('metric'),'pageviews');
   assert.equal(await metric(page, 'Pageviews'), history.reduce((a,b) => a + b*2, 0));
   await page.locator('.date-picker > summary').click();
   await page.getByText('Custom range', {exact:true}).click();
-  await page.getByLabel('From', {exact:true}).fill(date(-1));
-  await page.getByLabel('To', {exact:true}).fill(date(0));
-  await page.getByRole('button', {name:'Apply',exact:true}).click();
+  await selectCalendarRange(page,date(-1),date(0));
   assert.equal(await metric(page,'Pageviews'), nativeViews + history.at(-1)*2);
   await screenshot(page,'dashboard-two-days');
   const originalCounts = await page.locator('.metrics strong').allTextContents();

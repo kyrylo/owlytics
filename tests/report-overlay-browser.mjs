@@ -18,6 +18,8 @@ export async function checkReportOverlay({context,browser,origin,output}) {
         assert.ok(tabsFit,'Filtered browser tabs fit narrow screens');
       }
       await page.locator('.panel-page .expand-report').click();
+      await page.waitForURL(url=>url.searchParams.get('detail')==='page');
+      await page.waitForLoadState('domcontentloaded');
       const modal=page.locator('.expanded-report'), search=page.getByRole('searchbox',{name:'Search report'});
       assert.equal(await page.locator('.report-overlay').count(),1);
       assert.equal(await page.locator('.report-grid>.report-panel').count(),4,'Keep all four cards behind the report');

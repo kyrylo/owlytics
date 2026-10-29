@@ -425,3 +425,43 @@ body:has(.report-overlay) { overflow:hidden; }
 
 .more-rows-link { display:block; text-align:center; padding:8px; margin-top:8px; border-top:1px solid var(--border); font-size:12px; text-decoration:none; color:var(--muted); }
 .dashboard-toolbar { position:sticky; top:0; z-index:20; background:var(--bg); padding:8px 0; margin-top:-8px; margin-bottom:12px; }
+
+/* Date menus and dependency-free range calendar. */
+.date-picker>.dropdown-content,.comparison-picker>.dropdown-content { min-width:224px; padding:4px; border:0; border-radius:6px; max-height:min(75vh,calc(100dvh - 250px)); }
+.date-picker .dropdown-content>a,.comparison-picker .dropdown-content>a,.custom-range-toggle>summary { padding:9px 12px; font-size:14px; line-height:20px; }
+.date-picker .dropdown-content hr,.comparison-picker .dropdown-content hr { margin:4px -4px; }
+.custom-range-toggle>summary { border-radius:4px; }
+.custom-range-toggle>summary:hover { background:var(--surface); }
+.menu-key { float:right; min-width:20px; height:18px; margin:1px 0 0 12px; padding:0 4px; border:1px solid var(--border); border-radius:3px; color:var(--muted); font:12px/16px ui-monospace,monospace; text-align:center; }
+.date-picker .menu-check { font-size:14px; }
+.dropdown:has(.custom-range[data-calendar-ready]):has(.custom-range-toggle[open])>.dropdown-content { width:288px; min-width:0; max-width:calc(100vw - 24px); padding:0; overflow:auto; }
+.dropdown:has(.custom-range[data-calendar-ready]):has(.custom-range-toggle[open])>.dropdown-content>a,
+.dropdown:has(.custom-range[data-calendar-ready]):has(.custom-range-toggle[open])>.dropdown-content>hr,
+.custom-range-toggle:has(.custom-range[data-calendar-ready])[open]>summary { display:none; }
+.custom-range[data-calendar-ready] { display:block; margin:0; padding:0; }
+.custom-range[data-calendar-ready]>label,.custom-range[data-calendar-ready]>input,.custom-range[data-calendar-ready]>button { display:none; }
+.range-calendar { width:100%; padding:4px 8px 8px; font-size:14px; line-height:24px; }
+.calendar-heading { display:flex; align-items:center; justify-content:space-between; gap:0; height:40px; padding:4px 0; }
+.calendar-heading select,.calendar-heading input { min-width:0; height:30px; border:1px solid var(--border); border-radius:6px; background:var(--panel); color:var(--text); font-family:inherit; box-shadow:none; margin:0; }
+.calendar-heading select { width:120px; padding:4px 10px; font-family:inherit; font-size:14px; line-height:20px; font-weight:500; }
+.calendar-heading input { width:72px; padding:4px 10px; font-family:inherit; font-size:14px; line-height:20px; font-weight:500; }
+.calendar-heading button { flex:1; padding:0; height:30px; border:0; background:none; color:var(--muted); box-shadow:none; font-family:inherit; line-height:28px; font-size:22px; font-weight:400; }
+.calendar-heading button:disabled { opacity:.3; cursor:default; }
+.calendar-weekdays,.calendar-days { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); }
+.calendar-weekdays { height:32px; align-items:center; text-align:center; color:var(--muted); font-size:12px; }
+.calendar-days { grid-auto-rows:38px; }
+.calendar-days button { position:relative; margin:1px 0; padding:0; min-width:0; height:36px; border:1px solid transparent; border-radius:6px; background:none; color:var(--text); box-shadow:none; font-family:inherit; font-size:14px; font-weight:400; line-height:34px; text-align:center; }
+.calendar-days button[data-outside] { color:var(--muted); opacity:.6; }
+.calendar-days button:disabled { opacity:.2; cursor:default; }
+.calendar-days button:not(:disabled):hover { background:var(--surface); }
+.calendar-days button[data-between] { background:var(--accent-soft); border-radius:0; }
+.calendar-days button[data-start],.calendar-days button[data-end],.calendar-days button[data-start]:hover,.calendar-days button[data-end]:hover { background:var(--accent); color:var(--button-text); opacity:1; }
+.calendar-days button[data-start]:not([data-end]) { border-radius:6px 0 0 6px; }
+.calendar-days button[data-end]:not([data-start]) { border-radius:0 6px 6px 0; }
+.calendar-days button[data-today]::after { content:""; position:absolute; bottom:2px; left:calc(50% - 2px); width:4px; height:4px; border-radius:50%; background:var(--accent); }
+.calendar-days button[data-today][data-start]::after,.calendar-days button[data-today][data-end]::after { background:currentColor; }
+
+.comparison-picker .menu-key { display:none; }
+
+.calendar-month { display:flex; align-items:center; width:196px; gap:4px; }
+.calendar-heading button { display:grid; place-items:center; }

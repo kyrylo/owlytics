@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Report parity checks run against a disposable local database.
 import assert from 'node:assert/strict';
+import {selectCalendarRange} from '../tests/calendar-helpers.mjs';
 import {spawn,execFileSync} from 'node:child_process';
 import {mkdtempSync,mkdirSync,rmSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
@@ -25,6 +26,7 @@ import {checkEngagementFocus} from '../tests/engagement-focus-browser.mjs';
 import {checkReportWindows} from '../tests/report-windows-browser.mjs';
 import {checkReportPercentages} from '../tests/report-percentages-browser.mjs';
 import {checkReportOverlay} from '../tests/report-overlay-browser.mjs';
+import {checkCalendars} from '../tests/calendar-browser.mjs';
 import {checkHeadlineComparisons} from '../tests/headline-comparison-browser.mjs';
 const {chromium}=createRequire(import.meta.url)('playwright');
 const folder=mkdtempSync(join(tmpdir(),'owlytics-parity-'));
@@ -265,18 +267,14 @@ with zipfile.ZipFile(sys.argv[1]) as z:
  await page.goto(`${origin}/sites/1?${new URLSearchParams({...state,from:date(-7),to:date(-1),compare:'previous',offset:'50'})}`);
  await page.locator('.comparison-picker>summary').click();
  await page.getByText('Custom period',{exact:true}).click();
- await page.getByLabel('Compare from',{exact:true}).fill(date(-45));
- await page.getByLabel('Compare to',{exact:true}).fill(date(-36));
  await screenshot('custom-comparison-dark-320');
- await page.locator('.custom-comparison').getByRole('button',{name:'Compare',exact:true}).click();
+ await selectCalendarRange(page,date(-45),date(-36),true);
  let params=new URL(page.url()).searchParams;
  for(const [key,value] of Object.entries({...state,compare:'custom',compare_from:date(-45),compare_to:date(-36),offset:'50'}))assert.equal(params.get(key),value,key);
  assert.equal(await hits.count(),10,'Custom comparison permits a different number of days');
  await page.locator('.date-picker>summary').click();
  await page.getByText('Custom range',{exact:true}).click();
- await page.getByLabel('From',{exact:true}).fill(date(-14));
- await page.getByLabel('To',{exact:true}).fill(date(-1));
- await page.getByRole('button',{name:'Apply',exact:true}).click();
+ await selectCalendarRange(page,date(-14),date(-1));
  params=new URL(page.url()).searchParams;
  for(const [key,value] of Object.entries({...state,compare:'custom',compare_from:date(-45),compare_to:date(-36),from:date(-14),to:date(-1)}))assert.equal(params.get(key),value,key);
  assert.equal(params.has('offset'),false,'Changing the primary dates resets pagination');
@@ -375,11 +373,12 @@ with zipfile.ZipFile(sys.argv[1]) as z:
  await checkVisitBreakdowns({context,browser,origin,database,output});
  await checkReportPercentages({context,browser,origin,database,output});
  await checkReportOverlay({context,browser,origin,output});
+ await checkCalendars({context,browser,origin,database,output});
  await checkHeadlineComparisons({context,browser,origin,database,output});
  await checkReportWindows({context,browser,origin,database,output});
  await checkCrossdayReports({context,browser,origin,database,output});
  await checkEngagementFocus({context,browser,origin,database,output});
- assert.deepEqual(errors,[]);writeFileSync(join(output,'results.json'),JSON.stringify({passed:true,checks:['previous headline totals and dates with missing imported metrics across themes, mobile and no JavaScript','expanded report overlay, live search, scroll containment and closing during a pending search','browser focus/blur handling and three-second engagement buffering with controlled focus state','cross-date visitor and visit counts, calendar engagement, comparisons and interval CSVs in light/dark and without JavaScript','local-midnight visit overlap, exact date bounds and full-visit metrics across UTC, fractional offsets and DST','event-based percentage audiences, unavailable denominators and known-location tables/CSVs in light/dark and without JavaScript','visit-based report counts and matching expanded columns, CSVs, light/dark and no JavaScript',
+ assert.deepEqual(errors,[]);writeFileSync(join(output,'results.json'),JSON.stringify({passed:true,checks:['site-local calendar selection, leap days, reversed ranges, comparison dates and no-JavaScript forms','previous headline totals and dates with missing imported metrics across themes, mobile and no JavaScript','expanded report overlay, live search, scroll containment and closing during a pending search','browser focus/blur handling and three-second engagement buffering with controlled focus state','cross-date visitor and visit counts, calendar engagement, comparisons and interval CSVs in light/dark and without JavaScript','local-midnight visit overlap, exact date bounds and full-visit metrics across UTC, fractional offsets and DST','event-based percentage audiences, unavailable denominators and known-location tables/CSVs in light/dark and without JavaScript','visit-based report counts and matching expanded columns, CSVs, light/dark and no JavaScript',
   'inherited visit location and software filters, page intersections, dark mobile and no JavaScript','rolling-window traffic and complete-visit averages in light/dark and without JavaScript','row comparisons with exact prior values, missing history, keyboard and touch details','known-zero growth and empty-period charts; unavailable row duration and bounce changes','local source and software SVGs, alias identity, safe referrer hosts and site icons','responsive site picker, zero external icon requests and no-script site navigation','unfinished intervals and historical partial weeks/months','browser 12/24-hour clocks with preserved site timezone and DST distinctions','rounded SVG axis ticks at desktop, 390px and 360px, including no JavaScript','saved per-site metrics and report tabs; per-period intervals with calendar aliases and URL precedence','minute charts, DST offsets, imported-history fallback and custom interval defaults','realtime five/thirty-minute counts and empty audiences','realtime refresh timing, edit/visibility pauses, recovery, session expiry and navigation races','import switch across reports, suggestions and CSVs, including queued filters and no JavaScript','per-site date/comparison preferences with explicit URL overrides and optional storage','date, custom-range, interval and comparison shortcuts','comparison defaults and additional date presets','grouped filter chips, operators and immediate multi-selection','queued filter changes preserve search and chart navigation','filter suggestions and pagination retain selections','filter editing without JavaScript','Escape priority and filter history navigation','six metrics','report tabs','local country map and keyboard navigation without JavaScript','country/region/city drilldown and filter removal','location bounce-rate sorting and compact visitor percentages','no third-party location requests','chart comparison tooltip and crosshair','arrow/Home/End/Escape/Tab chart controls','touch details and narrow-screen positioning','native no-JavaScript chart descriptions','hourly and realtime','browser version drilldown','expanded report sorting/search/pagination','interval menu','custom comparisons and weekday matching','comparison and primary date forms preserve filters and report state','preset ranges exclude today','dropdown bounds and keyboard dismissal','comparison forms without JavaScript','ZIP export','responsive light/dark']},null,2));
  if(process.env.OWLYTICS_PARITY_DEMO) execFileSync(binary,['backup',resolve(process.env.OWLYTICS_PARITY_DEMO)],{env:{...process.env,OWLYTICS_DATABASE:database}});
  console.log('Report parity browser checks passed.');

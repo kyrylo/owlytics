@@ -2194,10 +2194,18 @@ fn date_controls(
             ""
         };
         format!(
-            "<a{} data-shortcut=\"{shortcut}\" href=\"{}\">{}{}</a>",
+            "<a{} data-shortcut=\"{shortcut}\" href=\"{}\">{}{}{}</a>",
             if active { " aria-current=\"true\"" } else { "" },
             escape(&link(site, range, query, Some((key, Some(value))))),
             escape(label),
+            if shortcut.is_empty() {
+                String::new()
+            } else {
+                format!(
+                    "<kbd class=\"menu-key\" aria-hidden=\"true\">{}</kbd>",
+                    shortcut.to_uppercase()
+                )
+            },
             if active {
                 "<span class=\"menu-check\" aria-hidden=\"true\">✓</span>"
             } else {
@@ -2206,6 +2214,9 @@ fn date_controls(
         )
     };
     for (period, title) in PRESETS {
+        if matches!(period, "24h" | "month" | "year" | "all") {
+            body.push_str("<hr>");
+        }
         let active = match period {
             "day" => calendar_period(range, query) == Some("day") && range.from == today,
             "yesterday" => {
@@ -2230,7 +2241,11 @@ fn date_controls(
         };
         body.push_str(&menu_link("period", period, title, active));
     }
-    body.push_str("<hr><details class=\"custom-range-toggle\"><summary data-shortcut=\"c\">Custom range</summary><form class=\"custom-range\" method=\"get\">");
+    let _ = write!(
+        body,
+        "<hr><details class=\"custom-range-toggle\"><summary data-shortcut=\"c\"><span>Custom range</span><kbd class=\"menu-key\" aria-hidden=\"true\">C</kbd></summary><form class=\"custom-range\" method=\"get\" data-calendar-min=\"{first}\" data-calendar-max=\"{today}\" data-calendar-selected=\"{}\">",
+        query.period.is_none() && query.from.is_some()
+    );
     body.push_str(&hidden_state(
         site,
         range,
@@ -2246,9 +2261,13 @@ fn date_controls(
         "<label for=\"from\">From</label><input id=\"from\" name=\"from\" type=\"date\" value=\"{}\" required><label for=\"to\">To</label><input id=\"to\" name=\"to\" type=\"date\" value=\"{}\" required><button class=\"button\">Apply</button></form></details>",
         range.from, range.to
     );
-    if !comparison_enabled(query) && !matches!(query.period.as_deref(), Some("realtime" | "all")) {
+    if !matches!(query.period.as_deref(), Some("realtime" | "all")) {
         body.push_str("<hr>");
-        body.push_str(&menu_link("compare", "previous", "Compare", false));
+        body.push_str(&if comparison_enabled(query) {
+            menu_link("compare", "off", "Disable comparison", false)
+        } else {
+            menu_link("compare", "previous", "Compare", false)
+        });
     }
     body.push_str("</div></details>");
     if let Some(period) = calendar_period(range, query) {
@@ -2293,10 +2312,16 @@ fn date_controls(
         crate::icons::control("calendar"),
         escape(&label)
     );
+    body.push_str(&menu_link("compare", "off", "Disable comparison", false));
+    body.push_str("<hr>");
     for (value, label) in [("previous", "Previous period"), ("year", "Year over year")] {
         body.push_str(&menu_link("compare", value, label, mode == value));
     }
-    body.push_str("<details class=\"custom-range-toggle\"><summary>Custom period</summary><form class=\"custom-range custom-comparison\" method=\"get\">");
+    let _ = write!(
+        body,
+        "<details class=\"custom-range-toggle\"><summary>Custom period</summary><form class=\"custom-range custom-comparison\" method=\"get\" data-calendar-min=\"{first}\" data-calendar-max=\"{today}\" data-calendar-selected=\"{}\">",
+        mode == "custom"
+    );
     body.push_str(&hidden_state(
         site,
         range,
@@ -2322,8 +2347,6 @@ fn date_controls(
             ));
         }
     }
-    body.push_str("<hr>");
-    body.push_str(&menu_link("compare", "off", "Disable comparison", false));
     body.push_str("</div></details>");
     body
 }

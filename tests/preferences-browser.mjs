@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {selectCalendarRange} from './calendar-helpers.mjs';
 import {join} from 'node:path';
 
 export async function checkPreferences({context,browser,origin,output}) {
@@ -45,8 +46,8 @@ export async function checkPreferences({context,browser,origin,output}) {
     await page.locator('.date-picker>summary').click();await page.getByRole('link',{name:'Last month',exact:true}).click();await ready();
     assert.match(await activeInterval(),/^Weeks/,'Calendar months share their interval preference');
     await page.locator('.date-picker>summary').click();await page.getByText('Custom range',{exact:true}).click();
-    await page.getByLabel('From',{exact:true}).fill('2026-10-01');await page.getByLabel('To',{exact:true}).fill('2026-10-02');
-    await page.getByRole('button',{name:'Apply',exact:true}).click();await ready();
+    const recent=offset=>new Date(Date.now()+offset*86400000).toISOString().slice(0,10);
+    await selectCalendarRange(page,recent(-2),recent(-1));await ready();
     assert.match(await activeInterval(),/^Days/,'Entering custom dates drops the preset interval');
     // Explicit filters and expanded reports take priority over preferred tabs.
     await visit('/sites/1?period=28d&country=US&browser=Chrome&source=google.com&detail=exit');

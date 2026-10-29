@@ -193,10 +193,91 @@
     signal.addEventListener('abort',()=>clearTimeout(leaveTimer),{once:true});
   }
 
+  function initializeCalendars(signal) {
+    // Calendar arithmetic uses UTC dates, while the reporting timezone's bounds
+    // come from Rust. Browser timezone and DST must never move a selected day.
+    const months=['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const dayNumber=value=>Date.parse(`${value}T00:00:00Z`)/86400000;
+    const dayDate=day=>new Date(day*86400000);
+    const iso=day=>dayDate(day).toISOString().slice(0,10);
+    const monthNumber=day=>dayDate(day).getUTCFullYear()*12+dayDate(day).getUTCMonth();
+    const firstDay=month=>{const date=new Date(0);date.setUTCFullYear(Math.floor(month/12),month%12,1);return date.getTime()/86400000;};
+    for(const form of document.querySelectorAll('.custom-range[data-calendar-min]')) {
+      const min=dayNumber(form.dataset.calendarMin),max=dayNumber(form.dataset.calendarMax);
+      if(!Number.isInteger(min)||!Number.isInteger(max)||min>max) continue;
+      const toggle=form.closest('.custom-range-toggle'),menu=form.closest('.dropdown');
+      const fields=[...form.querySelectorAll('input[type=date]')],submit=form.querySelector('button');
+      const calendar=document.createElement('div');calendar.className='range-calendar';
+      calendar.innerHTML='<div class="calendar-heading"><button type="button" class="calendar-prev" aria-label="Previous calendar month"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m15 4-8 8 8 8"/></svg></button><div class="calendar-month"><select aria-label="Month"></select><input type="number" aria-label="Year"></div><button type="button" class="calendar-next" aria-label="Next calendar month"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m9 4 8 8-8 8"/></svg></button></div><div class="calendar-weekdays">'+['Su','Mo','Tu','We','Th','Fr','Sa'].map(day=>`<span>${day}</span>`).join('')+'</div><div class="calendar-days"></div>';
+      form.prepend(calendar);form.dataset.calendarReady='';
+      const month=calendar.querySelector('select'),year=calendar.querySelector('input'),grid=calendar.querySelector('.calendar-days');
+      const previous=calendar.querySelector('.calendar-prev'),next=calendar.querySelector('.calendar-next');
+      year.min=String(dayDate(min).getUTCFullYear());year.max=String(dayDate(max).getUTCFullYear());
+      const selected=form.dataset.calendarSelected==='true'?fields.map(field=>dayNumber(field.value)):null;
+      let view=monthNumber(max),anchor=null;
+      const paint=(end,start=anchor)=>{
+        const from=start===null?null:Math.min(start,end),to=start===null?null:Math.max(start,end);
+        for(const button of grid.children) {
+          const value=Number(button.dataset.day);
+          button.toggleAttribute('data-start',value===from);
+          button.toggleAttribute('data-end',value===to);
+          button.toggleAttribute('data-between',from!==null&&value>from&&value<to);
+        }
+      };
+      const paintSelection=()=>anchor===null&&selected?paint(selected[1],selected[0]):paint(anchor);
+      const draw=()=>{
+        view=Math.max(monthNumber(min),Math.min(monthNumber(max),view));
+        const y=Math.floor(view/12),m=view%12,start=firstDay(view);
+        year.value=String(y);month.replaceChildren();
+        for(let i=0;i<12;i++) if(y*12+i>=monthNumber(min)&&y*12+i<=monthNumber(max)) month.add(new Option(months[i],String(i)));
+        month.value=String(m);previous.disabled=view<=monthNumber(min);next.disabled=view>=monthNumber(max);
+        const first=start-dayDate(start).getUTCDay();
+        grid.replaceChildren();
+        for(let index=0;index<42;index++) {
+          const value=first+index,date=dayDate(value),button=document.createElement('button');
+          button.type='button';button.dataset.day=String(value);button.dataset.date=iso(value);button.textContent=String(date.getUTCDate());
+          button.setAttribute('aria-label',`${months[date.getUTCMonth()]} ${date.getUTCDate()}, ${date.getUTCFullYear()}`);
+          button.disabled=value<min||value>max||(anchor!==null&&Math.abs(value-anchor)>3660);
+          button.toggleAttribute('data-outside',date.getUTCMonth()!==m);
+          button.toggleAttribute('data-today',value===max);grid.append(button);
+        }
+        paintSelection();
+      };
+      const open=()=>{anchor=null;view=monthNumber(selected?selected[0]:max);draw();};
+      // Populate before the controls become editable. A deferred toggle event
+      // can overwrite typing that has already started in the year field.
+      toggle.querySelector('summary').addEventListener('click',()=>{if(!toggle.open)open();},{signal});
+      menu.addEventListener('toggle',()=>{if(!menu.open)toggle.open=false;},{signal});
+      previous.addEventListener('click',()=>{view--;draw();},{signal});
+      next.addEventListener('click',()=>{view++;draw();},{signal});
+      month.addEventListener('change',()=>{view=Math.floor(view/12)*12+Number(month.value);draw();},{signal});
+      const changeYear=()=>{
+        const value=Number(year.value);if(!Number.isInteger(value)||!year.value)return;
+        const target=Math.max(monthNumber(min),Math.min(monthNumber(max),Math.max(Number(year.min),Math.min(Number(year.max),value))*12+view%12));
+        // Enter commits immediately; its later blur must not replace a day
+        // between pointerdown and click and silently swallow the selection.
+        if(target!==view) {view=target;draw();} else year.value=String(Math.floor(view/12));
+      };
+      year.addEventListener('change',changeYear,{signal});
+      year.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();changeYear();}},{signal});
+      grid.addEventListener('pointerover',event=>{const button=event.target.closest('button');if(anchor!==null&&button&&!button.disabled)paint(Number(button.dataset.day));},{signal});
+      grid.addEventListener('pointerleave',paintSelection,{signal});
+      grid.addEventListener('click',event=>{
+        const button=event.target.closest('button');if(!button||button.disabled)return;
+        const value=Number(button.dataset.day);
+        if(anchor===null) {anchor=value;view=monthNumber(value);draw();return;}
+        fields[0].value=iso(Math.min(anchor,value));fields[1].value=iso(Math.max(anchor,value));
+        form.requestSubmit(submit);
+      },{signal});
+      if(toggle.open)open();
+    }
+  }
+
   function initialize() {
   controls?.abort();
   controls = new AbortController();
   const signal = controls.signal;
+  initializeCalendars(signal);
   const menus = [...document.querySelectorAll('details.dropdown')];
   const reportSearch = document.querySelector('.report-search input[type=search]');
   reportSearch?.setAttribute('aria-keyshortcuts','/');
@@ -211,8 +292,9 @@
     if (!target) return;
     event.preventDefault();
     if (target.matches('summary')) {
-      for (let parent = target.parentElement; parent; parent = parent.parentElement) if (parent.matches('details')) parent.open = true;
-      (target.parentElement.querySelector('input:not([type=hidden])') || target).focus();
+      for (let parent = target.parentElement.parentElement; parent; parent = parent.parentElement) if (parent.matches('details')) parent.open = true;
+      if (!target.parentElement.open) target.click();
+      (target.parentElement.querySelector('.range-calendar select,input:not([type=hidden])') || target).focus();
     } else target.click();
   }, {signal});
   document.addEventListener('pointerdown', event => {

@@ -65,7 +65,7 @@ export async function checkMenus({context,browser,origin,output}) {
       await page.keyboard.press('Escape');
     }
     await page.keyboard.press('c');
-    assert.equal(await page.getByLabel('From',{exact:true}).evaluate(element=>element===document.activeElement),true);
+    assert.equal(await page.locator('.date-picker').getByLabel('Month',{exact:true}).evaluate(element=>element===document.activeElement),true);
     await page.keyboard.press('s');
     assert.equal(new URL(page.url()).searchParams.get('period'),'30d','Shortcuts do not fire while editing dates');
     await page.keyboard.press('Escape');await page.keyboard.press('i');

@@ -170,13 +170,18 @@ async fn calendar_engagement_folds_a_page_visit_before_averaging() {
         }
         Ok(())
     }).await.unwrap();
-    for interval in ["week", "month"] {
+    for (interval, scope) in [
+        ("week", ReportScope::All),
+        ("month", ReportScope::All),
+        ("week", ReportScope::Timeline),
+    ] {
         let r = report(
             &db,
             ReportQuery {
                 page: Some("/same".into()),
                 metric: Metric::TimeOnPage,
                 interval: Some(interval.into()),
+                scope,
                 ..query("2026-10-26", "2026-10-27")
             },
         )
@@ -193,6 +198,8 @@ async fn calendar_engagement_folds_a_page_visit_before_averaging() {
         );
         assert_eq!(Metric::TimeOnPage.value(row), 3.);
         assert_eq!(Metric::ScrollDepth.value(row), 80.);
+        assert_eq!(Metric::TimeOnPage.value(&r.totals), 3.);
+        assert_eq!(Metric::ScrollDepth.value(&r.totals), 80.);
         assert_eq!(
             r.daily.iter().map(|r| r.time_on_page_visits).sum::<i64>(),
             2

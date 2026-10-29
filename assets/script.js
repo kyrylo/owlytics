@@ -38,7 +38,7 @@
     if (height > 0) current.scroll = Math.max(current.scroll, Math.min(100, Math.round(bottom / height * 100)));
   }
   const foreground = () => document.visibilityState === "visible" && document.hasFocus();
-  function flush() {
+  function flush(final = false) {
     if (!allowed() || !current || !current.seen) return;
     scroll();
     if (current.started !== null) {
@@ -46,7 +46,9 @@
       current.started = null;
     }
     const time = Math.round(current.time);
-    if (current.sentScroll >= current.scroll && time - current.sentTime < 3000) return;
+    // Short focus changes may be buffered, but leaving the page must not lose
+    // that final foreground time. Identical final snapshots still stay silent.
+    if (current.sentScroll >= current.scroll && (time <= current.sentTime || (!final && time - current.sentTime < 3000))) return;
     current.sentTime = time;
     current.sentScroll = current.scroll;
     // Cumulative values make retries and out-of-order tab-hide requests safe.
@@ -79,7 +81,7 @@
     if (!allowed() || document.visibilityState === "prerender" || document.prerendering) return;
     const path = location.pathname;
     if (path === previous) return;
-    flush();
+    flush(true);
     previous = path;
     const bytes = new Uint8Array(16);
     crypto.getRandomValues(bytes);
@@ -100,10 +102,12 @@
   }
   addEventListener("popstate", track);
   addEventListener("pageshow", event => { if (event.persisted) { previous = undefined; track(); } resume(); });
-  addEventListener("pagehide", flush);
+  addEventListener("pagehide", () => flush(true));
   addEventListener("scroll", scroll, {passive: true});
   addEventListener("resize", scroll, {passive: true});
-  const visibility = () => { if (foreground()) resume(); else flush(); };
+  // Hidden is the last reliable lifecycle signal on mobile; pagehide may never
+  // follow if the browser is terminated. Visible blur can still be buffered.
+  const visibility = () => { if (foreground()) resume(); else flush(document.visibilityState === "hidden"); };
   document.addEventListener("visibilitychange", visibility);
   addEventListener("blur", visibility);
   addEventListener("focus", visibility);

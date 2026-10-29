@@ -208,6 +208,30 @@ test('overlapping focus and visibility events neither restart hidden clocks nor 
   assert.deepEqual(b.engagement().map(e=>e.time_ms),[4000,7000]);
 });
 
+test('leaving a page sends buffered short revisits without duplicating the final measurement', () => {
+  for (const leave of ['pagehide', 'navigation', 'hidden']) {
+    const b=browser();b.advance(1000);
+    b.context.document.focused=false;b.events.get('blur')();
+    b.advance(9000);
+    b.context.document.focused=true;b.events.get('focus')();
+    b.advance(1000);
+    // Browsers can hide/blur before pagehide; that short increment is buffered.
+    b.context.document.focused=false;b.events.get('blur')();
+    if (leave==='pagehide') {
+      b.events.get('pagehide')();b.events.get('pagehide')();
+    } else if (leave==='hidden') {
+      b.context.document.visibilityState='hidden';
+      b.documentEvents.get('visibilitychange')();
+      assert.deepEqual(b.engagement().map(e=>e.time_ms),[1000,2000],'Hidden pages may terminate without pagehide');
+      b.events.get('pagehide')();
+    } else {
+      b.context.location.pathname='/next';b.context.history.pushState();
+    }
+    assert.deepEqual(b.engagement().map(e=>e.time_ms),[1000,2000],leave);
+    assert.equal(b.engagement()[1].id,'01'.repeat(16));
+  }
+});
+
 test('allowlists campaign labels with source precedence and never sends click ID values', () => {
   const b = browser({search: '?ref=old&source=middle&utm_source=first&utm_source=News%20Letter&utm_medium=Email&utm_campaign=Autumn&utm_content=CTA&utm_term=Rust+SQLite&gclid=secret-click&msclkid=another-secret&fbclid=private-id&email=private@example.com&token=private-token'});
   assert.deepEqual(JSON.parse(b.views()[0].body).campaign, {source: 'News Letter', medium: 'Email', name: 'Autumn', content: 'CTA', term: 'Rust SQLite', click_id: 'gclid'});

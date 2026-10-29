@@ -279,17 +279,17 @@ pub(crate) fn build(
             let index = 2 + event_columns.len() + cohort_keys.len();
             if let Some(time) = row.get::<_, Option<i64>>(index + 2)? {
                 let depth = row.get(index + 3)?;
-                if selected.contains("page") {
-                    page_measurement.add(
-                        session,
-                        row.get_ref(index)?.as_str()?,
-                        "",
-                        time,
-                        depth,
-                        &mut accumulator,
-                        page_index,
-                    )?;
-                }
+                // Keep the range-wide measured page visit even for a timeline
+                // request. Daily denominators cannot be summed across midnight.
+                page_measurement.add(
+                    session,
+                    row.get_ref(index)?.as_str()?,
+                    "",
+                    time,
+                    depth,
+                    &mut accumulator,
+                    page_index,
+                )?;
                 // Order by page, then day: each measured page visit has its own denominator.
                 if query.has_filter("page") {
                     daily_measurement.add(

@@ -41,6 +41,7 @@ c.commit()
       for(const [metric,value] of [['time_on_page','3s'],['scroll_depth','80%']]) {
         await page.goto(`${origin}/sites/100?from=2026-10-26&to=2026-10-27&page=%2Fsame&compare=off&interval=week&metric=${metric}`);
         assert.deepEqual(await points(),[value]);
+        assert.equal(await page.locator('.metric[aria-current=true] strong').innerText(),value,'Headline and chart fold the same cross-midnight page visit');
       }
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
     } finally {await owner.close();}
@@ -56,5 +57,14 @@ print(json.dumps(list(csv.reader(io.StringIO(z.read('visitors.csv').decode()))))
     assert.equal(rows.length,2);
     assert.deepEqual(rows[1],[label,'2','3',views,'1.33','66.67','40.0']);
   }
+  const response=await context.request.get(`${origin}/sites/100/export?from=2026-10-26&to=2026-10-27&page=%2Fsame&interval=week`);
+  assert.equal(response.status(),200);
+  const summary=JSON.parse(execFileSync('python3',['-c',`
+import csv,io,json,sys,zipfile
+z=zipfile.ZipFile(io.BytesIO(sys.stdin.buffer.read()))
+print(json.dumps(list(csv.DictReader(io.StringIO(z.read('summary.csv').decode())))[0]))
+`],{input:await response.body(),encoding:'utf8'}));
+  assert.equal(summary.time_on_page_seconds,'3.0');
+  assert.equal(summary.scroll_depth_percent,'80.00');
   assert.deepEqual(errors,[]);
 }

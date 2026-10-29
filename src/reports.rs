@@ -765,6 +765,12 @@ fn build(
             data.sessions(c, session_rows, dimension == "page")?;
         }
     }
+    if query.has_filter("page") {
+        native.page_engagement.for_each(c, |row| {
+            totals.add_engagement(&row);
+            Ok(())
+        })?;
+    }
     if let Some(pages) = by_dimension.get("page") {
         let data = if raw {
             native.page_engagement
@@ -775,7 +781,6 @@ fn build(
     }
     if query.has_filter("page") {
         for row in native.daily_engagement.to_vec(c)? {
-            totals.add_engagement(&row);
             if let Some(day) = daily.iter_mut().find(|d| d.name == row.name) {
                 day.add_engagement(&row);
             }

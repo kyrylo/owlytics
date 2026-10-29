@@ -16,7 +16,7 @@ c.commit()
 `,database,JSON.stringify(sources)]);
   const storageState={cookies:(await context.storageState()).cookies,origins:[]};
   const owner=await browser.newContext({storageState,viewport:{width:1440,height:1050}});
-  const errors=[],external=[];
+  const errors=[],external=[],art=[];
   try {
     const page=await owner.newPage();
     page.on('pageerror',e=>errors.push(e.message));
@@ -48,13 +48,22 @@ c.commit()
       assert.equal(await rows.count(),sources.length,`Source rows at ${width}px: ${page.url()}`);
       assert.equal(await rows.locator('.site-monogram').count(),3);
       assert.equal(await rows.locator('.brand-direct').count(),1);
-      assert.equal(await rows.locator('.report-icon>svg').count(),sources.length);
-      assert.equal(await page.locator('.report-icon img,.report-icon script').count(),0);
+      assert.equal(await rows.locator('.report-icon>svg,.report-icon>img').count(),sources.length);
+      assert.equal(await page.locator('.report-icon script').count(),0);
+      await page.waitForFunction(()=>[...document.querySelectorAll('.report-icon>img')].every(image=>image.complete&&image.naturalWidth>0));
+      for(const name of ['google','microsoftbing','duckduckgo','copilot','googlegemini','instagram','slack','gmail','tiktok']) {
+        const image=rows.locator(`.brand-${name}>img`);
+        assert.equal(await image.count(),1,`${name} uses the original multicolor artwork`);
+        assert.match(await image.getAttribute('src'),new RegExp(`^/assets/brands/${name}\\.[a-f0-9]{16}\\.(svg|ico)$`));
+      }
+      const discord=rows.locator('.brand-discord>img');
+      assert.ok(await discord.evaluate(image=>image.naturalWidth/image.naturalHeight<1.5),'Use Discord’s symbol, not its tiny horizontal wordmark');
       await page.screenshot({path:join(output,`source-icons-${scheme}-${width}.png`),fullPage:true});
       const sizes=await rows.locator('.report-icon').evaluateAll(es=>es.map(e=>({w:e.getBoundingClientRect().width,h:e.getBoundingClientRect().height})));
       assert.ok(sizes.every(({w,h})=>w===16&&h===16));
       assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
     }
+    art.push(...await page.locator('.expanded-report tbody tr').evaluateAll(rows=>rows.map(row=>({label:[...row.querySelector('th').querySelector('a').childNodes].filter(node=>node.nodeType===3||!node.classList?.contains('report-icon')).map(node=>node.textContent).join('').trim(),html:row.querySelector('.report-icon').outerHTML}))));
     // Icons do not change the label or the link's audience; URL paths use the host icon.
     await page.setViewportSize({width:1440,height:1050});
     await page.locator('.expanded-report').getByRole('link',{name:'GitHub',exact:true}).click();
@@ -65,7 +74,22 @@ c.commit()
     for(const [tab,panel,brands] of [['Browsers','browser',['googlechrome','safari','firefox','microsoftedge','opera','samsunginternet','brave','generic']],['OS','os',['apple','windows','android','linux','ubuntu','googlechrome','device']],['Devices','device',['device']]]) {
       await page.getByRole('link',{name:tab,exact:true}).click();
       for(const brand of brands) assert.ok(await page.locator(`.panel-${panel} .brand-${brand}`).count(),`${panel}: ${brand}`);
-      await page.screenshot({path:join(output,`software-icons-${panel}.png`),fullPage:true});
+      const icons=page.locator(`.panel-${panel} .report-icon`);
+      await page.waitForFunction(()=>[...document.querySelectorAll('.report-icon>img')].every(image=>image.complete&&image.naturalWidth>0));
+      await page.locator(`.panel-${panel} .data-row`).first().hover();
+      assert.ok((await icons.locator('svg,img').evaluateAll(elements=>elements.map(element=>getComputedStyle(element).opacity))).every(opacity=>opacity==='1'),'Row hover must not fade brand artwork');
+      await page.locator(`.panel-${panel}`).screenshot({path:join(output,`software-icons-${panel}.png`)});
+      if(panel!=='device') art.push(...await page.locator(`.panel-${panel} .data-row`).evaluateAll(rows=>rows.map(row=>({label:[...row.querySelector('.row-label').childNodes].filter(node=>node.nodeType===3||!node.classList?.contains('report-icon')).map(node=>node.textContent).join('').trim(),html:row.querySelector('.report-icon').outerHTML}))));
+    }
+    // Render the actual server-generated marks together for visual review at 16px and 32px.
+    const escaped=text=>text.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+    await page.route(origin+'/__brand-review',route=>route.fulfill({contentType:'text/html',body:`<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="/assets/app.css"><style>body{padding:24px}main{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}article{display:flex;align-items:center;gap:12px;padding:12px;background:var(--panel);border-radius:6px;font-size:12px}.large>.report-icon,.large>.report-icon>svg,.large>.report-icon>img{width:32px;height:32px}.label{min-width:0;overflow-wrap:anywhere}</style></head><body><main>${art.map(item=>`<article><span class="large">${item.html}</span>${item.html}<span class="label">${escaped(item.label)}</span></article>`).join('')}</main></body></html>`}));
+    await page.setViewportSize({width:1200,height:1000});
+    await page.goto(origin+'/__brand-review');
+    await page.waitForFunction(()=>[...document.images].every(image=>image.complete&&image.naturalWidth>0));
+    for(const scheme of ['light','dark']) {
+      await page.emulateMedia({colorScheme:scheme});
+      await page.screenshot({path:join(output,`brand-art-${scheme}.png`),fullPage:true});
     }
     assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
   } finally {await owner.close();}

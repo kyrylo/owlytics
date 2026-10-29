@@ -2,6 +2,7 @@ pub mod acquisition;
 mod acquisition_reports;
 pub mod analytics;
 pub mod auth;
+mod brand_assets;
 mod calendar;
 pub mod config;
 mod dashboard;

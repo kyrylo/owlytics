@@ -747,12 +747,13 @@ fn source_tabs(site: &Site, range: &Range, query: &ReportQuery, selected: &str) 
         .unwrap_or_else(|| "Campaigns".into());
     let _ = write!(
         out,
-        "<details class=\"dropdown campaign-menu\" name=\"dashboard-menu\"><summary{}>{title}<span class=\"chevron\" aria-hidden=\"true\">⌄</span></summary><div class=\"dropdown-content\">",
+        "<details class=\"dropdown campaign-menu\" name=\"dashboard-menu\"><summary{}>{title}{}</summary><div class=\"dropdown-content\">",
         if campaign {
             " aria-current=\"page\""
         } else {
             ""
-        }
+        },
+        crate::icons::control("chevron")
     );
     for (key, label) in crate::acquisition::DIMENSIONS
         .iter()
@@ -2709,25 +2710,39 @@ pub(crate) async fn show(
     };
     let sites = analytics::sites(&app.db).await.unwrap_or_default();
     let mut body = format!(
-        "<div class=\"dashboard-toolbar\" data-site=\"{}\" data-period=\"{}\" data-realtime=\"{}\"><div class=\"site-and-live\"><details class=\"dropdown site-picker\" name=\"dashboard-menu\"><summary>{}<span>{}</span><span class=\"chevron\">⌄</span></summary><div class=\"dropdown-content\">",
+        "<div class=\"dashboard-toolbar\" data-site=\"{}\" data-period=\"{}\" data-realtime=\"{}\"><div class=\"site-and-live\"><details class=\"dropdown site-picker\" name=\"dashboard-menu\"><summary>{}<span class=\"site-name\">{}</span>{}</summary><div class=\"dropdown-content\">",
         escape(&site.domain),
         escape(query.period.as_deref().unwrap_or("custom")),
         report.realtime,
         crate::icons::site(site.id, &site.domain),
-        escape(&site.domain)
+        escape(&site.domain),
+        crate::icons::control("chevron")
     );
     for (index, item) in sites.into_iter().enumerate() {
         let _ = write!(
             body,
-            "<a class=\"site-option\" href=\"/sites/{}\"{}>{}<span>{}</span></a>",
+            "<a class=\"site-option\" href=\"/sites/{}\"{}{}>{}<span class=\"site-name\">{}</span>{}</a>",
             item.id,
             if index < 9 {
                 format!(" data-shortcut=\"{}\"", index + 1)
             } else {
                 String::new()
             },
+            if item.id == site.id {
+                " aria-current=\"page\""
+            } else {
+                ""
+            },
             crate::icons::site(item.id, &item.domain),
-            escape(&item.domain)
+            escape(&item.domain),
+            if item.id == site.id {
+                format!(
+                    "<span class=\"menu-check\">{}</span>",
+                    crate::icons::control("check")
+                )
+            } else {
+                String::new()
+            }
         );
     }
     let _ = write!(

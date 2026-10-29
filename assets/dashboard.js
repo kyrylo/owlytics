@@ -315,6 +315,35 @@
   const signal = controls.signal;
   initializeCalendars(signal);
   const menus = [...document.querySelectorAll('details.dropdown')];
+  // Center on the actual trigger, then clamp at the viewport edge. Measuring the
+  // trigger also handles wrapped mobile controls and the sticky toolbar.
+  const positionMenu = menu => {
+    if (!menu.open) return;
+    const content = menu.querySelector(':scope > .dropdown-content');
+    const trigger = menu.querySelector(':scope > summary');
+    if (!content || !trigger || !content.offsetParent) return;
+    const anchor = trigger.getBoundingClientRect(), parent = content.offsetParent.getBoundingClientRect();
+    const left = Math.max(12, Math.min(anchor.left + anchor.width / 2 - content.offsetWidth / 2, innerWidth - content.offsetWidth - 12));
+    content.style.left = `${left - parent.left}px`;
+    content.style.right = 'auto';
+    content.style.top = `${anchor.bottom + 6 - parent.top}px`;
+    content.style.maxHeight = `${Math.max(0, Math.min(innerHeight * .75, innerHeight - anchor.bottom - 18))}px`;
+    content.setAttribute('data-positioned','');
+  };
+  const positionMenus = () => menus.forEach(positionMenu);
+  const menuSizes = new ResizeObserver(positionMenus);
+  // Native toggle events are queued tasks; old inline coordinates can otherwise
+  // flash after resizing a closed menu. Observe the open attribute before paint.
+  const menuState = new MutationObserver(positionMenus);
+  for (const menu of menus) {
+    const content = menu.querySelector(':scope > .dropdown-content');
+    if (content) menuSizes.observe(content);
+    menuState.observe(menu, {attributes:true,attributeFilter:['open']});
+  }
+  signal.addEventListener('abort', () => { menuSizes.disconnect(); menuState.disconnect(); }, {once:true});
+  window.addEventListener('resize', positionMenus, {signal});
+  document.addEventListener('scroll', positionMenus, {capture:true,signal});
+  positionMenus();
   const reportSearch = document.querySelector('.report-search input[type=search]');
   reportSearch?.setAttribute('aria-keyshortcuts','/');
   const shortcuts = new Map([...document.querySelectorAll('[data-shortcut]')].filter(element=>element.dataset.shortcut).map(element=>[element.dataset.shortcut,element]));

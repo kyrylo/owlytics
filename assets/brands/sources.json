@@ -1,0 +1,261 @@
+[
+  {
+    "file": "googlechrome.svg",
+    "source": "https://raw.githubusercontent.com/alrra/browser-logos/58881b84c4d73adc03c06fa2c275a7abee02d935/src/chrome/chrome.svg",
+    "revision": "58881b84c4d73adc03c06fa2c275a7abee02d935",
+    "sha256": "98045c791131de00b7c81c5e4bd1ce686891661c0e2c821d588c351a5add919d",
+    "bytes": 1065
+  },
+  {
+    "file": "chromium.svg",
+    "source": "https://raw.githubusercontent.com/alrra/browser-logos/58881b84c4d73adc03c06fa2c275a7abee02d935/src/chromium/chromium.svg",
+    "revision": "58881b84c4d73adc03c06fa2c275a7abee02d935",
+    "sha256": "129d6af41f1041493d3e3aeba786a05a72ea0350bdef98bd37f00318ee93acce",
+    "bytes": 516
+  },
+  {
+    "file": "firefox.svg",
+    "source": "https://raw.githubusercontent.com/alrra/browser-logos/58881b84c4d73adc03c06fa2c275a7abee02d935/src/firefox/firefox.svg",
+    "revision": "58881b84c4d73adc03c06fa2c275a7abee02d935",
+    "sha256": "3f3742d1e78c0db6c2d3531250f70c30675ee5310de32fa89befaf738c54efd0",
+    "bytes": 7488
+  },
+  {
+    "file": "microsoftedge.svg",
+    "source": "https://raw.githubusercontent.com/alrra/browser-logos/58881b84c4d73adc03c06fa2c275a7abee02d935/src/edge/edge.svg",
+    "revision": "58881b84c4d73adc03c06fa2c275a7abee02d935",
+    "sha256": "3b6f52dce2b57af664b63dadb3b61efd5a896fb0f98abe5d85fe312fa6a93228",
+    "bytes": 2886
+  },
+  {
+    "file": "safari.svg",
+    "source": "https://raw.githubusercontent.com/alrra/browser-logos/58881b84c4d73adc03c06fa2c275a7abee02d935/src/safari/safari.svg",
+    "revision": "58881b84c4d73adc03c06fa2c275a7abee02d935",
+    "sha256": "80fd72ca5eb8545f1981277b31f4f92951d469d4efebd078e4086b676fe517dc",
+    "bytes": 5254
+  },
+  {
+    "file": "opera.svg",
+    "source": "https://raw.githubusercontent.com/alrra/browser-logos/58881b84c4d73adc03c06fa2c275a7abee02d935/src/opera/opera.svg",
+    "revision": "58881b84c4d73adc03c06fa2c275a7abee02d935",
+    "sha256": "c44ee714df96334b0c31509841b156e920b45549b392a40e255f63e5b5fca383",
+    "bytes": 1020
+  },
+  {
+    "file": "samsunginternet.svg",
+    "source": "https://raw.githubusercontent.com/alrra/browser-logos/58881b84c4d73adc03c06fa2c275a7abee02d935/src/samsung-internet/samsung-internet.svg",
+    "revision": "58881b84c4d73adc03c06fa2c275a7abee02d935",
+    "sha256": "1d3dd16afd0579f0378d68be7cd2086200cfd44386112abc112f7c6cc50afc73",
+    "bytes": 626
+  },
+  {
+    "file": "brave.svg",
+    "source": "https://raw.githubusercontent.com/alrra/browser-logos/58881b84c4d73adc03c06fa2c275a7abee02d935/src/brave/brave.svg",
+    "revision": "58881b84c4d73adc03c06fa2c275a7abee02d935",
+    "sha256": "efda38982b159ade8cd672a7196c82d01d1cb5c0162467c242484dfc03e6f76b",
+    "bytes": 1809
+  },
+  {
+    "file": "microsoftbing.svg",
+    "source": "https://raw.githubusercontent.com/gilbarbara/logos/d6960edc1b7309d392c76e40d3a320df7f9ff85c/logos/bing.svg",
+    "revision": "d6960edc1b7309d392c76e40d3a320df7f9ff85c",
+    "sha256": "4c2b040b9f1e158372326b3324047eae021ef4abf84f688a26d83be9a7289a15",
+    "bytes": 7204
+  },
+  {
+    "file": "duckduckgo.svg",
+    "source": "https://raw.githubusercontent.com/gilbarbara/logos/d6960edc1b7309d392c76e40d3a320df7f9ff85c/logos/duckduckgo.svg",
+    "revision": "d6960edc1b7309d392c76e40d3a320df7f9ff85c",
+    "sha256": "4109baacff1e03520b8438c05d454c68e9ab44c2b06e5954570a6ee1779cf954",
+    "bytes": 8276
+  },
+  {
+    "file": "gmail.svg",
+    "source": "https://raw.githubusercontent.com/gilbarbara/logos/d6960edc1b7309d392c76e40d3a320df7f9ff85c/logos/google-gmail.svg",
+    "revision": "d6960edc1b7309d392c76e40d3a320df7f9ff85c",
+    "sha256": "4e4a8dd4379ec84a286c61c6d1d6eaf7c2bf7d79f3670b821ba4550cc5cd3e76",
+    "bytes": 1894
+  },
+  {
+    "file": "googlegemini.svg",
+    "source": "https://raw.githubusercontent.com/gilbarbara/logos/d6960edc1b7309d392c76e40d3a320df7f9ff85c/logos/google-gemini-icon.svg",
+    "revision": "d6960edc1b7309d392c76e40d3a320df7f9ff85c",
+    "sha256": "a7a4032753f2364288c86d0fb96b74861b341540adcac7d8b8ad33566cef40d7",
+    "bytes": 12317
+  },
+  {
+    "file": "slack.svg",
+    "source": "https://raw.githubusercontent.com/gilbarbara/logos/d6960edc1b7309d392c76e40d3a320df7f9ff85c/logos/slack-icon.svg",
+    "revision": "d6960edc1b7309d392c76e40d3a320df7f9ff85c",
+    "sha256": "cf3c36c4ec98189ac7195410f0b93839b33527a71d023b69960d95129a4532a2",
+    "bytes": 2807
+  },
+  {
+    "file": "tiktok.svg",
+    "source": "https://raw.githubusercontent.com/gilbarbara/logos/d6960edc1b7309d392c76e40d3a320df7f9ff85c/logos/tiktok-icon.svg",
+    "revision": "d6960edc1b7309d392c76e40d3a320df7f9ff85c",
+    "sha256": "1b8526711b7113ace7947a874485938cfcd7fb63ae1a19101a28f296d80c662e",
+    "bytes": 3678
+  },
+  {
+    "file": "linux.svg",
+    "source": "https://raw.githubusercontent.com/gilbarbara/logos/d6960edc1b7309d392c76e40d3a320df7f9ff85c/logos/linux-tux.svg",
+    "revision": "d6960edc1b7309d392c76e40d3a320df7f9ff85c",
+    "sha256": "c127aa21a1fdbeae59ff373db722e0b0295a4786f75f60dcd1fbd10f89b75a91",
+    "bytes": 18456
+  },
+  {
+    "file": "android.svg",
+    "source": "https://raw.githubusercontent.com/gilbarbara/logos/d6960edc1b7309d392c76e40d3a320df7f9ff85c/logos/android-icon.svg",
+    "revision": "d6960edc1b7309d392c76e40d3a320df7f9ff85c",
+    "sha256": "7a0c7b491fa7370376aa556b07f88f0c927b24e6bded4e51850a3f600aeb633d",
+    "bytes": 4903
+  },
+  {
+    "file": "microsoftteams.svg",
+    "source": "https://raw.githubusercontent.com/gilbarbara/logos/d6960edc1b7309d392c76e40d3a320df7f9ff85c/logos/microsoft-teams.svg",
+    "revision": "d6960edc1b7309d392c76e40d3a320df7f9ff85c",
+    "sha256": "05a9700b771f7cd8932f8baefd5c21b41ea80a288374dd749635385efd141c37",
+    "bytes": 5580
+  },
+  {
+    "file": "reddit.svg",
+    "source": "https://raw.githubusercontent.com/gilbarbara/logos/d6960edc1b7309d392c76e40d3a320df7f9ff85c/logos/reddit-icon.svg",
+    "revision": "d6960edc1b7309d392c76e40d3a320df7f9ff85c",
+    "sha256": "8356f60b3e8a1277918bd8d0d4dba267ab9d0a67f537d86dde2b9f2b0f786ae9",
+    "bytes": 2798
+  },
+  {
+    "file": "whatsapp.svg",
+    "source": "https://raw.githubusercontent.com/gilbarbara/logos/d6960edc1b7309d392c76e40d3a320df7f9ff85c/logos/whatsapp-icon.svg",
+    "revision": "d6960edc1b7309d392c76e40d3a320df7f9ff85c",
+    "sha256": "074e5ed6bffef226dce92efd9b16038f40a7529de60f7baaaa54c068e580cdd7",
+    "bytes": 4247
+  },
+  {
+    "file": "facebook.svg",
+    "source": "https://raw.githubusercontent.com/gilbarbara/logos/d6960edc1b7309d392c76e40d3a320df7f9ff85c/logos/facebook.svg",
+    "revision": "d6960edc1b7309d392c76e40d3a320df7f9ff85c",
+    "sha256": "f83b5eaedea0fa8c1fbd0a458febc55f1d38d21c47e656d9af2ba45dec55ed05",
+    "bytes": 1020
+  },
+  {
+    "file": "linkedin.svg",
+    "source": "https://raw.githubusercontent.com/gilbarbara/logos/d6960edc1b7309d392c76e40d3a320df7f9ff85c/logos/linkedin-icon.svg",
+    "revision": "d6960edc1b7309d392c76e40d3a320df7f9ff85c",
+    "sha256": "e14ad9c44fe2388edfd215688583a79a1c27148116191b5e73a85d96b5edc673",
+    "bytes": 1628
+  },
+  {
+    "file": "youtube.svg",
+    "source": "https://raw.githubusercontent.com/gilbarbara/logos/d6960edc1b7309d392c76e40d3a320df7f9ff85c/logos/youtube-icon.svg",
+    "revision": "d6960edc1b7309d392c76e40d3a320df7f9ff85c",
+    "sha256": "f7d90809268daaeeb968d8766b9dd5a86ad398d0a09563f6aa4eac1667b1b51b",
+    "bytes": 1023
+  },
+  {
+    "file": "claude.svg",
+    "source": "https://raw.githubusercontent.com/gilbarbara/logos/d6960edc1b7309d392c76e40d3a320df7f9ff85c/logos/claude-icon.svg",
+    "revision": "d6960edc1b7309d392c76e40d3a320df7f9ff85c",
+    "sha256": "9821277268934ad3e1565cc651adb849ffc51b6cd88b3dbdac7097652bef5677",
+    "bytes": 3897
+  },
+  {
+    "file": "perplexity.svg",
+    "source": "https://raw.githubusercontent.com/gilbarbara/logos/d6960edc1b7309d392c76e40d3a320df7f9ff85c/logos/perplexity-icon.svg",
+    "revision": "d6960edc1b7309d392c76e40d3a320df7f9ff85c",
+    "sha256": "e7961a712065bc1c7a38b1e2063ce03e70cb64e4aa6678e640d145ecd24bb273",
+    "bytes": 1451
+  },
+  {
+    "file": "google.ico",
+    "source": "https://www.google.com/favicon.ico",
+    "retrieved": "2026-10-29",
+    "sha256": "6da5620880159634213e197fafca1dde0272153be3e4590818533fab8d040770",
+    "upstream_sha256": "6da5620880159634213e197fafca1dde0272153be3e4590818533fab8d040770",
+    "modification": "None"
+  },
+  {
+    "file": "copilot.svg",
+    "source": "https://copilot.microsoft.com/static/cmc/favicon.svg",
+    "retrieved": "2026-10-29",
+    "sha256": "404e6cce227301466c3a7d785568e069fa762c7ce54bf65f67f224252b11f4e2",
+    "upstream_sha256": "c5b0ad0fc0c6fd9c49131a972635e1aba4e65a0d0385c01d5be8735921d7ef8b",
+    "modification": "Add viewBox for scaling"
+  },
+  {
+    "file": "windows.svg",
+    "source": "https://raw.githubusercontent.com/gilbarbara/logos/d6960edc1b7309d392c76e40d3a320df7f9ff85c/logos/microsoft-windows-icon.svg",
+    "revision": "d6960edc1b7309d392c76e40d3a320df7f9ff85c",
+    "retrieved": "2026-10-29",
+    "sha256": "3657d42a52f2190ad6bf44198f31647747e28ab315bb7fd8e0b1e2f8273bc2d6"
+  },
+  {
+    "file": "yahoo.svg",
+    "source": "https://raw.githubusercontent.com/homarr-labs/dashboard-icons/83f32e08257b66fbd971ac8d7645f5b38d52e85d/svg/yahoo.svg",
+    "revision": "83f32e08257b66fbd971ac8d7645f5b38d52e85d",
+    "retrieved": "2026-10-29",
+    "sha256": "f742c7c3c4ade43833f5f9d1768db1fbd3693baaf95799010e17fcedfd355386"
+  },
+  {
+    "file": "yandex.ico",
+    "source": "https://yandex.com/favicon.ico",
+    "revision": null,
+    "retrieved": "2026-10-29",
+    "sha256": "9a8c4ab2a3a2451c6f1b31af29eeeced47745013711f641eafa80828a2b251de"
+  },
+  {
+    "file": "amazon.svg",
+    "source": "https://raw.githubusercontent.com/homarr-labs/dashboard-icons/83f32e08257b66fbd971ac8d7645f5b38d52e85d/svg/amazon.svg",
+    "revision": "83f32e08257b66fbd971ac8d7645f5b38d52e85d",
+    "sha256": "326fd7c65f787c62b7c509392b07f58e132cd1de75f349f97337f4df668077aa"
+  },
+  {
+    "file": "ebay.svg",
+    "source": "https://raw.githubusercontent.com/homarr-labs/dashboard-icons/83f32e08257b66fbd971ac8d7645f5b38d52e85d/svg/ebay.svg",
+    "revision": "83f32e08257b66fbd971ac8d7645f5b38d52e85d",
+    "sha256": "93108797535b72bbc34c36bc4526f4b08d9845c0dfaa2cf591e6d2a9473fbbff"
+  },
+  {
+    "file": "instagram.svg",
+    "source": "https://raw.githubusercontent.com/homarr-labs/dashboard-icons/83f32e08257b66fbd971ac8d7645f5b38d52e85d/svg/instagram.svg",
+    "revision": "83f32e08257b66fbd971ac8d7645f5b38d52e85d",
+    "sha256": "2c1ad008f5d7f2abd8f7aa1b7f1c7c87859efb0204aee8f5bc88d12567179550"
+  },
+  {
+    "file": "ycombinator.svg",
+    "source": "https://raw.githubusercontent.com/homarr-labs/dashboard-icons/83f32e08257b66fbd971ac8d7645f5b38d52e85d/svg/hacker-news.svg",
+    "revision": "83f32e08257b66fbd971ac8d7645f5b38d52e85d",
+    "sha256": "4f7c4ad9e1840497c1a44e0b07cb34b3712ae4cf225705ad39d8d04f8b19a353"
+  },
+  {
+    "file": "producthunt.svg",
+    "source": "https://raw.githubusercontent.com/gilbarbara/logos/d6960edc1b7309d392c76e40d3a320df7f9ff85c/logos/producthunt.svg",
+    "revision": "d6960edc1b7309d392c76e40d3a320df7f9ff85c",
+    "sha256": "a3071e306d5b1b34f4abdc6f72142dfc9d121c1771736d9e4cd45ed40b54153c"
+  },
+  {
+    "file": "telegram.svg",
+    "source": "https://raw.githubusercontent.com/gilbarbara/logos/d6960edc1b7309d392c76e40d3a320df7f9ff85c/logos/telegram.svg",
+    "revision": "d6960edc1b7309d392c76e40d3a320df7f9ff85c",
+    "sha256": "9744d0980f9276493d459b6dd0aac472687b38f4896ea8c68f42d7d492306575"
+  },
+  {
+    "file": "pinterest.svg",
+    "source": "https://raw.githubusercontent.com/gilbarbara/logos/d6960edc1b7309d392c76e40d3a320df7f9ff85c/logos/pinterest.svg",
+    "revision": "d6960edc1b7309d392c76e40d3a320df7f9ff85c",
+    "sha256": "5d8d57eeac662641f844185e74a13477a5daf1fc7b1300e7104aea8a038f28b1"
+  },
+  {
+    "file": "discord.svg",
+    "source": "https://raw.githubusercontent.com/gilbarbara/logos/d6960edc1b7309d392c76e40d3a320df7f9ff85c/logos/discord-icon.svg",
+    "revision": "d6960edc1b7309d392c76e40d3a320df7f9ff85c",
+    "sha256": "3e33e7256ff99a760707b6c1d9a5f002119d7174e659bbb13af44787cf918122"
+  },
+  {
+    "file": "twitch.svg",
+    "source": "https://raw.githubusercontent.com/homarr-labs/dashboard-icons/83f32e08257b66fbd971ac8d7645f5b38d52e85d/svg/twitch.svg",
+    "revision": "83f32e08257b66fbd971ac8d7645f5b38d52e85d",
+    "sha256": "a8eb365147d606ec498ea6e655e1e1397ee5c0bdbc096464d496e6f2f31a1c69"
+  }
+]

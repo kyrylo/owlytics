@@ -7,6 +7,84 @@ use http_body_util::BodyExt;
 use tower::ServiceExt;
 
 #[tokio::test]
+async fn brand_art_is_exact_versioned_and_cacheable() {
+    use sha2::{Digest, Sha256};
+    let app = owlytics::router(
+        owlytics::db::Database::open(":memory:").unwrap(),
+        common::config(),
+    );
+    let manifest: Vec<serde_json::Value> =
+        serde_json::from_str(include_str!("../assets/brands/sources.json")).unwrap();
+    for entry in manifest {
+        let file = entry["file"].as_str().unwrap();
+        let bytes = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("assets/brands")
+                .join(file),
+        )
+        .unwrap();
+        let digest = format!("{:x}", Sha256::digest(&bytes));
+        assert_eq!(
+            digest,
+            entry["sha256"].as_str().unwrap(),
+            "Pinned artwork changed: {file}"
+        );
+        let (name, extension) = file.rsplit_once('.').unwrap();
+        let path = format!("/assets/brands/{name}.{}.{extension}", &digest[..16]);
+        let response = app
+            .clone()
+            .oneshot(Request::builder().uri(&path).body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK, "{file}");
+        assert_eq!(
+            response.headers()["cache-control"],
+            "public, max-age=31536000, immutable"
+        );
+        assert_eq!(
+            response.headers()["content-type"],
+            if extension == "ico" {
+                "image/x-icon"
+            } else {
+                "image/svg+xml"
+            }
+        );
+        let etag = response.headers()["etag"].clone();
+        assert_eq!(
+            response
+                .into_body()
+                .collect()
+                .await
+                .unwrap()
+                .to_bytes()
+                .as_ref(),
+            bytes
+        );
+        let cached = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri(&path)
+                    .header("if-none-match", etag)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(cached.status(), StatusCode::NOT_MODIFIED);
+        assert!(
+            cached
+                .into_body()
+                .collect()
+                .await
+                .unwrap()
+                .to_bytes()
+                .is_empty()
+        );
+    }
+}
+
+#[tokio::test]
 async fn gzip_preserves_html_assets_and_cache_policy() {
     use std::io::Read;
     let app = owlytics::router(

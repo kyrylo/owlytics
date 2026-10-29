@@ -33,12 +33,15 @@ try {
     await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><rect width="20" height="20" fill="purple"/></svg>'});
   });
   await context.route('**/__assets',route=>route.fulfill({contentType:'text/html',body:`<!doctype html><html><head><link rel="stylesheet" href="/assets/app.css"><script defer src="/assets/favicons.js"></script></head><body>
-    <details id="sites"><summary>Sites <span class="site-favicon"><img hidden data-favicon="/sites/1/favicon"></span></summary>
+    <details id="sites"><summary>Sites <span class="site-favicon"><span class="report-icon">S</span><img hidden data-favicon="/sites/1/favicon"></span></summary>
     <span class="site-favicon"><img hidden data-favicon="/sites/2/favicon"></span></details>
     <figure class="country-map"><svg viewBox="0 0 475 335" style="width:475px"><a href="#country" data-country="US"><title>United States</title><use class="map-country" fill="color-mix(in srgb,var(--map-high) 100%,var(--map-low))" href="${sprite}#US"/></a><use class="map-country" href="${sprite}#FR"/></svg></figure>
     </body></html>`}));
   await page.goto(origin+'/__assets');
   await page.waitForFunction(()=>document.querySelector('img').naturalWidth>0);
+  await page.waitForFunction(()=>!document.querySelector('img').hidden);
+  assert.equal(await page.locator('.site-favicon>.report-icon').evaluate(element=>getComputedStyle(element).visibility),'hidden','A transparent favicon must not show the fallback underneath');
+  assert.equal(await page.locator('.site-favicon>img').first().evaluate(element=>getComputedStyle(element).backgroundColor),'rgba(0, 0, 0, 0)','Favicons do not acquire an artificial panel-colored box');
   assert.deepEqual(requested,['/sites/1/favicon'],'Closed menus must not load hidden icons');
   const map=page.locator('use').first();
   await page.waitForFunction(()=>document.querySelector('use').getBBox().width>0);

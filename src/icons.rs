@@ -1,4 +1,4 @@
-// Brand paths are bundled from Simple Icons under CC0. See docs/licenses/icons.md.
+// Local brand artwork and monochrome paths. See docs/licenses/icons.md.
 // No icon markup or URL comes from untrusted report data.
 pub(crate) fn control(name: &str) -> String {
     let drawing = match name {
@@ -8,10 +8,17 @@ pub(crate) fn control(name: &str) -> String {
         "filter" => "<path d='M3 6h18M6 12h12m-9 6h6'/>",
         "expand" => "<path d='M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5'/>",
         "close" => "<path d='m6 6 12 12M6 18 18 6'/>",
+        "chevron" => "<path d='m6 9 6 6 6-6'/>",
+        "check" => "<path d='m5 12 4 4L19 6'/>",
         _ => unreachable!("Unknown dashboard control icon"),
     };
+    let class = if name == "chevron" {
+        "control-icon chevron"
+    } else {
+        "control-icon"
+    };
     format!(
-        "<svg class=\"control-icon\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">{drawing}</svg>"
+        "<svg class=\"{class}\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">{drawing}</svg>"
     )
 }
 
@@ -22,6 +29,7 @@ macro_rules! brand {
             $name,
             include_str!(concat!("../assets/icons/", $name, ".svg"))
                 .replace("<svg ", "<svg focusable=\"false\" ")
+                .replace(" fill=\"#000000\"", "")
                 .replace("<path ", "<path fill=\"currentColor\" ")
         )
     };
@@ -98,36 +106,25 @@ pub(crate) fn report(dimension: &str, name: &str) -> String {
             }
         }
         "browser" => match name {
-            "Chrome" | "Chrome Mobile" | "Chrome Mobile iOS" | "Chrome WebView" | "Chromium" => {
-                brand!("googlechrome")
+            "Chrome" | "Chrome Mobile" | "Chrome Mobile iOS" | "Chrome WebView" => {
+                crate::brand_assets::icon("googlechrome")
             }
-            "Safari" | "Mobile Safari" => drawing(
-                "safari",
-                "<circle cx='12' cy='12' r='10.5' fill='#398ad2'/><circle cx='12' cy='12' r='8.5' fill='none' stroke='white' stroke-dasharray='1 3'/><path d='m16.5 7.5-3 6-3-3Z' fill='#ec5a54'/><path d='m7.5 16.5 3-6 3 3Z' fill='white'/>",
-            ),
-            "Firefox" | "Firefox Mobile" | "Firefox iOS" => brand!("firefox"),
-            "Edge" | "Microsoft Edge" | "Edge Mobile" => brand!("microsoftedge"),
-            "Opera" | "Opera Mobile" | "Opera Mini" => brand!("opera"),
-            "Samsung Internet" => drawing(
-                "samsunginternet",
-                "<circle cx='12' cy='12' r='7' fill='currentColor'/><ellipse cx='12' cy='12' rx='11' ry='3.8' transform='rotate(-30 12 12)' fill='none' stroke='currentColor' stroke-width='1.5'/><path d='m5 14 14-8' stroke='white' stroke-width='1.2'/>",
-            ),
-            "Brave" => brand!("brave"),
+            "Chromium" => crate::brand_assets::icon("chromium"),
+            "Safari" | "Mobile Safari" => crate::brand_assets::icon("safari"),
+            "Firefox" | "Firefox Mobile" | "Firefox iOS" => crate::brand_assets::icon("firefox"),
+            "Edge" | "Microsoft Edge" | "Edge Mobile" => crate::brand_assets::icon("microsoftedge"),
+            "Opera" | "Opera Mobile" | "Opera Mini" => crate::brand_assets::icon("opera"),
+            "Samsung Internet" => crate::brand_assets::icon("samsunginternet"),
+            "Brave" => crate::brand_assets::icon("brave"),
             _ => globe(),
         },
         "os" => match name {
             "macOS" | "Mac" | "Mac OS" | "Mac OS X" | "iOS" => brand!("apple"),
-            "Linux" | "GNU/Linux" => brand!("linux"),
+            "Linux" | "GNU/Linux" => crate::brand_assets::icon("linux"),
             "Ubuntu" => brand!("ubuntu"),
-            "Chrome OS" | "ChromeOS" => brand!("googlechrome"),
-            "Windows" => drawing(
-                "windows",
-                "<path d='M2 4 11 3v8H2zm11-1 9-1v9h-9zM2 13h9v8l-9-1zm11 0h9v9l-9-1z' fill='currentColor'/>",
-            ),
-            "Android" => drawing(
-                "android",
-                "<path d='m7 5-2-3m12 3 2-3M4 12a8 8 0 0 1 16 0v7H4Z' fill='currentColor' stroke='currentColor' stroke-width='1.5'/><circle cx='8' cy='9' r='1' fill='white'/><circle cx='16' cy='9' r='1' fill='white'/>",
-            ),
+            "Chrome OS" | "ChromeOS" => crate::brand_assets::icon("googlechrome"),
+            "Windows" => crate::brand_assets::icon("windows"),
+            "Android" => crate::brand_assets::icon("android"),
             _ => screen(),
         },
         "device" => match name {
@@ -174,60 +171,48 @@ fn source(name: &str) -> String {
             "direct",
             "<path d='M3 12h17m-6-6 6 6-6 6' stroke='currentColor' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/>",
         ),
-        "Google" => brand!("google"),
-        "Bing" => brand!("microsoftbing"),
-        "DuckDuckGo" => brand!("duckduckgo"),
-        "Yahoo!" => drawing(
-            "yahoo",
-            "<path d='M2 4h4l4 7 4-7h4l-6 10v6H8v-6ZM20 3h3l-2 12h-2Zm-1 14h3l-.5 3h-3Z' fill='currentColor'/>",
-        ),
-        "Brave" => brand!("brave"),
+        "Google" => crate::brand_assets::icon("google"),
+        "Bing" => crate::brand_assets::icon("microsoftbing"),
+        "DuckDuckGo" => crate::brand_assets::icon("duckduckgo"),
+        "Yahoo!" => crate::brand_assets::icon("yahoo"),
+        "Brave" => crate::brand_assets::icon("brave"),
         "Ecosia" => brand!("ecosia"),
-        "Yandex" => drawing(
-            "yandex",
-            "<circle cx='12' cy='12' r='11' fill='currentColor'/><path d='M15 5h-3a4 4 0 0 0-1 8l-4 6h3l4-7h-2a2.5 2.5 0 0 1 0-5h1v12h2Z' fill='white'/>",
-        ),
+        "Yandex" => crate::brand_assets::icon("yandex"),
         "Baidu" => brand!("baidu"),
         "Qwant" => brand!("qwant"),
         "Startpage" => brand!("startpage"),
         "Sogou" => brand!("sogou"),
         "ChatGPT" => brand!("openai"),
-        "Claude" => brand!("claude"),
-        "Perplexity" => brand!("perplexity"),
-        "Gemini" => brand!("googlegemini"),
-        "Copilot" => drawing(
-            "copilot",
-            "<path d='M4 5a3 3 0 0 1 3-3h8l-4 8H2Z' fill='#35aca7'/><path d='M13 2h4a3 3 0 0 1 3 3l2 9h-9l-3-7Z' fill='#8478cf'/><path d='M22 14a6 6 0 0 1-6 8H8l4-8Z' fill='#e08d6e'/><path d='M2 10h9L8 22H6a3 3 0 0 1-3-3Z' fill='#518dd6'/>",
-        ),
-        "Grok" => drawing(
-            "grok",
-            "<path d='M18 4a9 9 0 1 0 2 13M7 17 21 3M12 12l8 8' stroke='currentColor' stroke-width='2.4'/>",
-        ),
+        "Claude" => crate::brand_assets::icon("claude"),
+        "Perplexity" => crate::brand_assets::icon("perplexity"),
+        "Gemini" => crate::brand_assets::icon("googlegemini"),
+        "Copilot" => crate::brand_assets::icon("copilot"),
+        "Grok" => brand!("grok"),
         "DeepSeek" => brand!("deepseek"),
-        "Facebook" => brand!("facebook"),
+        "Facebook" => crate::brand_assets::icon("facebook"),
         "Twitter" => brand!("x"),
-        "Instagram" => brand!("instagram"),
-        "LinkedIn" => brand!("linkedin"),
-        "Reddit" => brand!("reddit"),
+        "Instagram" => crate::brand_assets::icon("instagram"),
+        "LinkedIn" => crate::brand_assets::icon("linkedin"),
+        "Reddit" => crate::brand_assets::icon("reddit"),
         "GitHub" => brand!("github"),
-        "Hacker News" => brand!("ycombinator"),
-        "Product Hunt" => brand!("producthunt"),
+        "Hacker News" => crate::brand_assets::icon("ycombinator"),
+        "Product Hunt" => crate::brand_assets::icon("producthunt"),
         "Bluesky" => brand!("bluesky"),
         "Threads" => brand!("threads"),
-        "Pinterest" => brand!("pinterest"),
-        "Telegram" => brand!("telegram"),
-        "Discord" => brand!("discord"),
-        "Slack" => brand!("slack"),
-        "WhatsApp" => brand!("whatsapp"),
-        "Microsoft Teams" => brand!("microsoftteams"),
-        "YouTube" => brand!("youtube"),
-        "TikTok" => brand!("tiktok"),
+        "Pinterest" => crate::brand_assets::icon("pinterest"),
+        "Telegram" => crate::brand_assets::icon("telegram"),
+        "Discord" => crate::brand_assets::icon("discord"),
+        "Slack" => crate::brand_assets::icon("slack"),
+        "WhatsApp" => crate::brand_assets::icon("whatsapp"),
+        "Microsoft Teams" => crate::brand_assets::icon("microsoftteams"),
+        "YouTube" => crate::brand_assets::icon("youtube"),
+        "TikTok" => crate::brand_assets::icon("tiktok"),
         "Vimeo" => brand!("vimeo"),
-        "Twitch" => brand!("twitch"),
-        "Amazon" => brand!("amazon"),
-        "eBay" => brand!("ebay"),
+        "Twitch" => crate::brand_assets::icon("twitch"),
+        "Amazon" => crate::brand_assets::icon("amazon"),
+        "eBay" => crate::brand_assets::icon("ebay"),
         "Etsy" => brand!("etsy"),
-        "Gmail" => brand!("gmail"),
+        "Gmail" => crate::brand_assets::icon("gmail"),
         _ => monogram(name),
     }
 }

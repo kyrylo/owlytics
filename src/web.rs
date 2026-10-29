@@ -36,7 +36,7 @@ pub fn router(db: Database, config: Config) -> Router {
         password_check: Arc::new(Semaphore::new(1)),
         favicon_fetch: Arc::new(Semaphore::new(2)),
     };
-    Router::new()
+    let mut router = Router::new()
         .route("/up", get(up))
         .route("/", get(dashboard::home))
         .route("/sites", post(dashboard::create))
@@ -102,7 +102,14 @@ pub fn router(db: Database, config: Config) -> Router {
         .route(
             "/assets/owl.svg",
             asset("image/svg+xml", include_str!("../assets/owl.svg")),
-        )
+        );
+    for icon in crate::brand_assets::assets() {
+        router = router.route(
+            &icon.url,
+            asset_bytes(icon.mime, icon.body, "public, max-age=31536000, immutable"),
+        );
+    }
+    router
         .layer(DefaultBodyLimit::max(8 * 1024))
         .layer(middleware::from_fn(security_headers))
         .layer(tower_http::compression::CompressionLayer::new())
@@ -120,7 +127,16 @@ fn asset_with_cache(
     body: &'static str,
     cache_control: &'static str,
 ) -> axum::routing::MethodRouter<App> {
-    let etag = format!("\"{}\"", auth::digest(body));
+    asset_bytes(content_type, body.as_bytes(), cache_control)
+}
+
+fn asset_bytes(
+    content_type: &'static str,
+    body: &'static [u8],
+    cache_control: &'static str,
+) -> axum::routing::MethodRouter<App> {
+    use sha2::{Digest, Sha256};
+    let etag = format!("\"{:x}\"", Sha256::digest(body));
     get(move |headers: HeaderMap| {
         let etag = etag.clone();
         async move {

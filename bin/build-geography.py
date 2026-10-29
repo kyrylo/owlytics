@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCE = Path(sys.argv[1])
 
 
-def simplify(points, tolerance=0.45):
+def simplify(points, tolerance=0.3):
     """Retain a polygon's outline using point-to-segment distance in SVG units."""
     if len(points) <= 2:
         return points
@@ -49,11 +49,15 @@ for feature in features:
     paths, all_points = [], []
     for polygon in polygons:
         for ring in polygon:
-            points = [(2*(lon+180), 2*(85-lat)) for lon, lat in ring]
+            # Mercator in the dashboard's 475 x 335 frame. Project at build
+            # time so the server and browser need no geography dependency.
+            points = [(237.5 + 75*math.radians(lon),
+                       335/1.5 - 75*math.log(math.tan(math.pi/4 + math.radians(lat)/2)))
+                      for lon, lat in ring]
             assert all(math.isfinite(x) and math.isfinite(y) for x,y in points)
             # Natural Earth splits shapes at the antimeridian; never join
             # a polygon across the entire map by accident.
-            assert all(abs(a[0]-b[0]) < 360 for a,b in zip(points, points[1:])), code
+            assert all(abs(a[0]-b[0]) < 75*math.pi for a,b in zip(points, points[1:])), code
             all_points.extend(points)
             points = simplify(points)
             if len(points) >= 4:
@@ -61,10 +65,10 @@ for feature in features:
     # Small sovereign states and islands remain reachable, even when their
     # true outlines are below a pixel at dashboard size.
     xs, ys = zip(*all_points)
-    small = max(max(xs)-min(xs), max(ys)-min(ys)) < 3
+    small = max(max(xs)-min(xs), max(ys)-min(ys)) < 2
     if small or not paths:
         x, y = (min(xs)+max(xs))/2, (min(ys)+max(ys))/2
-        r = 1.8
+        r = 1.2
         path = f"M{number(x-r)},{number(y)}a{r},{r} 0 1,0 {r*2},0a{r},{r} 0 1,0 -{r*2},0Z"
     else:
         path = "".join(paths)

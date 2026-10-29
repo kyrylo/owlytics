@@ -36,6 +36,7 @@ for i,(person,offset,path,source,browser) in enumerate([(1,-1200,'/older','OldOn
     const blur=()=>page.evaluate(()=>document.activeElement?.blur());
     await visit(`${base}&metric=bounce_rate`);
     assert.deepEqual(await counts(),[2,3,4]);
+    assert.equal(await page.locator('.country-map a[data-country=US]').getAttribute('aria-label'),'United States · 2 current visitors');
     assert.equal(await page.locator('.metrics a.metric').count(),2);
     assert.equal(await page.locator('.comparison-picker,.current-visitors').count(),0);
     assert.deepEqual(await page.locator('.chart-labels span').allTextContents(),['-30m','-25m','-20m','-15m','-10m','-5m']);
@@ -91,6 +92,7 @@ for i,(person,offset,path,source,browser) in enumerate([(1,-1200,'/older','OldOn
 c.execute("INSERT INTO events(site_id,received_at,day,visitor,request_id,path,source,country,browser,device) VALUES(6,?,?,randomblob(16),randomblob(16),'/new','New','DE','Chrome','Desktop')",(stamp,day))`);
     await page.clock.fastForward(2000);
     await until(async()=>JSON.stringify(await counts())==='[3,4,5]','thirty-second refresh shows new visitor');
+    assert.equal(await page.locator('.country-map a[data-country=DE]').getAttribute('data-unit'),'current visitor');
     assert.equal(fetches.length,initialFetches+1);
     assert.equal(page.url(),url);assert.equal(await page.evaluate(()=>window.history.length),history);
     const refresh=async()=>{
@@ -104,9 +106,16 @@ c.execute("INSERT INTO events(site_id,received_at,day,visitor,request_id,path,so
     await refresh();
 
     // Do not steal focus, discard an unfinished edit, or hide chart details.
-    for(const control of ['menu','chart','input']) {
+    for(const control of ['menu','chart','map','input']) {
       if(control==='menu') await page.locator('.date-picker>summary').click();
       if(control==='chart') await page.locator('.chart-hit').first().focus();
+      if(control==='map') {
+        await page.locator('.country-map').scrollIntoViewIfNeeded();
+        const bounds=await page.locator('.map-canvas>svg').boundingBox();
+        await page.mouse.move(bounds.x+(237.5-75*Math.PI*100/180)*bounds.width/475,bounds.y+(335/1.5-75*Math.log(Math.tan(Math.PI/4+38*Math.PI/360)))*bounds.height/335);
+        assert.equal(await page.locator('.map-tooltip strong').innerText(),'United States');
+        assert.equal(await page.locator('.map-tooltip span').innerText(),'current visitors');
+      }
       if(control==='input') {
         await visit(`${base}&detail=page`);
         await page.getByRole('searchbox',{name:'Search report'}).fill('unfinished');

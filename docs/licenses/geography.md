@@ -10,10 +10,12 @@ https://github.com/nvkelso/natural-earth-vector/blob/master/geojson/ne_50m_admin
 Natural Earth data is public domain. Terms:
 https://www.naturalearthdata.com/about/terms-of-use/
 
-The generator projects and simplifies the outlines, merges map units sharing an
+The generator applies a Mercator projection in a 475 × 335 frame (scale 75,
+translation 237.5, 223⅓), simplifies the outlines, merges map units sharing an
 ISO country code, omits Antarctica and marks very small countries with circles.
 The result contains 236 country shapes. The country list includes places that
-cannot be represented on the map.
+cannot be represented on the map. Projection runs only when rebuilding the asset;
+the browser loads a local, versioned SVG sprite without a mapping library.
 
 ## City names
 

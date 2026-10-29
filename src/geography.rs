@@ -12,7 +12,7 @@ pub fn country_sprite() -> &'static str {
     static SVG: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
         use std::fmt::Write;
         let mut svg =
-            String::from(r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 300"><defs>"#);
+            String::from(r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 475 335"><defs>"#);
         for (code, path) in country_shapes() {
             let _ = write!(
                 svg,

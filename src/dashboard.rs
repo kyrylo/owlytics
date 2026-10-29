@@ -643,11 +643,13 @@ fn country_map(
         .unwrap_or(0);
     let metric = if report.breakdown_pageviews {
         "pageviews"
+    } else if report.realtime {
+        "current visitors"
     } else {
         "visitors"
     };
     let mut out = format!(
-        "<figure class=\"country-map\"><div class=\"map-canvas\"><svg viewBox=\"0 0 720 300\" role=\"group\" aria-label=\"{} by country\">",
+        "<figure class=\"country-map\"><div class=\"map-canvas\"><svg viewBox=\"0 0 475 335\" role=\"group\" aria-label=\"{} by country\">",
         if report.breakdown_pageviews {
             "Pageviews"
         } else {
@@ -658,48 +660,36 @@ fn country_map(
     for (code, _) in &shapes {
         let count = values.get(code).copied().unwrap_or(0);
         if count > 0 {
-            let level = (1. + 4. * (count as f64).ln_1p() / (maximum as f64).ln_1p()).floor() as u8;
+            let intensity = 100. * count as f64 / maximum as f64;
+            let unit = if count == 1 {
+                &metric[..metric.len() - 1]
+            } else {
+                metric
+            };
             let label = format!(
                 "{} · {} {}",
                 crate::geography::country_name(code),
                 number(count),
-                if count == 1 {
-                    &metric[..metric.len() - 1]
-                } else {
-                    metric
-                }
+                unit
             );
             let _ = write!(
                 out,
-                "<a href=\"{}\" aria-label=\"{}\" data-country=\"{code}\"><title>{}</title><use class=\"map-country map-level-{}\" href=\"{sprite}#{code}\"/></a>",
+                "<a href=\"{}\" aria-label=\"{}\" data-country=\"{code}\" data-name=\"{}\" data-value=\"{}\" data-unit=\"{unit}\"><title>{}</title><use class=\"map-country\" fill=\"color-mix(in srgb,var(--map-high) {intensity:.4}%,var(--map-low))\" href=\"{sprite}#{code}\"/></a>",
                 escape(&link(site, range, query, Some(("country", Some(code))))),
                 escape(&label),
+                escape(crate::geography::country_name(code)),
+                compact_number(count),
                 escape(&label),
-                level.clamp(1, 5)
             );
         } else {
             let _ = write!(
                 out,
-                "<use class=\"map-country map-level-0\" href=\"{sprite}#{code}\" aria-hidden=\"true\"/>"
+                "<use class=\"map-country\" href=\"{sprite}#{code}\" aria-hidden=\"true\"/>"
             );
         }
     }
-    out.push_str("</svg></div><figcaption>");
-    if maximum > 0 {
-        let _ = write!(
-            out,
-            "<div class=\"map-legend\" aria-label=\"{metric}, logarithmic color scale, 1 to {}\"><span>1</span><span class=\"map-swatches\" aria-hidden=\"true\">",
-            number(maximum)
-        );
-        for level in 1..=5 {
-            let _ = write!(out, "<i class=\"map-level-{level}\"></i>");
-        }
-        let _ = write!(
-            out,
-            "</span><span>{} {metric}</span></div>",
-            number(maximum)
-        );
-    } else {
+    out.push_str("<use class=\"map-outline\" hidden/></svg><div class=\"map-tooltip\" role=\"tooltip\" hidden><strong></strong><div><b></b> <span></span></div></div></div><figcaption>");
+    if maximum == 0 {
         out.push_str("<p class=\"map-note\">No location data in this period</p>");
     }
     let unmapped: i64 = values

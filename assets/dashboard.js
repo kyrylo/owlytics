@@ -193,6 +193,42 @@
     signal.addEventListener('abort',()=>clearTimeout(leaveTimer),{once:true});
   }
 
+  function initializeMaps(signal) {
+    for (const canvas of document.querySelectorAll('.map-canvas')) {
+      const tooltip = canvas.querySelector('.map-tooltip');
+      const outline = canvas.querySelector('.map-outline');
+      const hide = () => { tooltip.hidden = true; outline.setAttribute('hidden',''); };
+      function show(shape, x, y) {
+        if (!shape) { hide(); return; }
+        outline.setAttribute('href',shape.getAttribute('href'));
+        outline.removeAttribute('hidden');
+        const country = shape.closest('a[data-country]');
+        tooltip.hidden = !country;
+        if (!country) return;
+        tooltip.querySelector('strong').textContent = country.dataset.name;
+        tooltip.querySelector('b').textContent = country.dataset.value;
+        tooltip.querySelector('span').textContent = country.dataset.unit;
+        const bounds = canvas.getBoundingClientRect();
+        tooltip.style.left = `${Math.max(0,Math.min(x-bounds.left+8,bounds.width-tooltip.offsetWidth))}px`;
+        tooltip.style.top = `${Math.max(0,Math.min(y-bounds.top+8,bounds.height-tooltip.offsetHeight))}px`;
+      }
+      // Native titles remain the fallback until the local tooltip is ready.
+      for (const title of canvas.querySelectorAll('a[data-country]>title')) title.remove();
+      canvas.addEventListener('pointermove',event=>{
+        if (event.pointerType !== 'touch') show(event.target.closest('.map-country'),event.clientX,event.clientY);
+      });
+      canvas.addEventListener('pointerleave',hide);
+      canvas.addEventListener('focusin',event=>{
+        const shape = event.target.closest('a[data-country]')?.querySelector('.map-country');
+        if (shape) { const box = shape.getBoundingClientRect(); show(shape,box.x+box.width/2,box.y+box.height/2); }
+      });
+      canvas.addEventListener('focusout',hide);
+      canvas.addEventListener('keydown',event=>{
+        if(event.key==='Escape'&&!tooltip.hidden){event.preventDefault();hide();}
+      });
+      window.addEventListener('resize',hide,{signal});
+    }
+  }
   function initializeCalendars(signal) {
     // Calendar arithmetic uses UTC dates, while the reporting timezone's bounds
     // come from Rust. Browser timezone and DST must never move a selected day.
@@ -477,6 +513,7 @@
     window.addEventListener('resize', place, {signal});
   }
   initializeRowComparisons(signal);
+  initializeMaps(signal);
   document.addEventListener('keydown', event => {
     if (event.key !== 'Escape' || event.defaultPrevented) return;
     const close = document.querySelector('.close-report');
@@ -577,7 +614,7 @@
   }
   function editingReport() {
     const search = document.querySelector('.report-search input[type=search]');
-    return document.querySelector('.filter-picker,.report-overlay,main details[open],.chart-tooltip:not([hidden])') || document.activeElement?.closest('main a,main button,main input,main select,main textarea,main summary,main .chart-hit') || search && search.value !== search.defaultValue;
+    return document.querySelector('.filter-picker,.report-overlay,main details[open],.chart-tooltip:not([hidden]),.map-tooltip:not([hidden])') || document.activeElement?.closest('main a,main button,main input,main select,main textarea,main summary,main .chart-hit') || search && search.value !== search.defaultValue;
   }
   async function refreshRealtime() {
     if (!isRealtime() || document.hidden || refreshRequest || running || jobs.length) return;

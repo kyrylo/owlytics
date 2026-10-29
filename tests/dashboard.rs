@@ -1810,6 +1810,7 @@ async fn realtime_cards_reports_and_csv_use_their_respective_windows() {
     let html = body(request(&app, target, &cookie, None).await).await;
     assert!(html.contains("data-realtime=\"true\""));
     assert!(html.contains("class=\"metric realtime-current\" data-value=\"2\""));
+    assert!(html.contains("aria-label=\"United States · 2 current visitors\""));
     assert!(html.contains("<span>Unique visitors (last 30 min)</span><strong>3</strong>"));
     assert!(html.contains("<span>Total pageviews (last 30 min)</span><strong>4</strong>"));
     assert!(!html.contains("<span>Total visits</span>"));

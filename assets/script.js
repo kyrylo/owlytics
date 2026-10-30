@@ -1,6 +1,8 @@
 /* Owlytics — MIT. No cookies or browser storage. */
 (() => {
   "use strict";
+  // Replaced by the server at startup; the standalone tracker keeps the default.
+  const respectGpc = true;
   const script = document.currentScript;
   if (!script || window.__owlytics) return;
   window.__owlytics = true;
@@ -8,7 +10,7 @@
   const endpoint = new URL("/api/event", script.src).href;
   const engagementEndpoint = new URL("/api/engagement", script.src).href;
   const local = /^(localhost|127(?:\.\d{1,3}){3}|0\.0\.0\.0|\[?::1\]?)$/.test(location.hostname) || location.hostname.endsWith(".localhost");
-  const disabled = () => navigator.doNotTrack === "1" || navigator.globalPrivacyControl || navigator.webdriver;
+  const disabled = () => navigator.doNotTrack === "1" || (respectGpc && navigator.globalPrivacyControl) || navigator.webdriver;
   if (!domain || disabled() || (local && !script.hasAttribute("data-local"))) return;
   let previous, current;
   function allowed() {

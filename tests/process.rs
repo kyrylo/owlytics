@@ -37,6 +37,7 @@ impl Fixture {
             .env("OWLYTICS_DATABASE", self.database())
             .env("OWLYTICS_URL", "http://localhost:3000")
             .env("OWLYTICS_TRUSTED_PROXIES", "")
+            .env_remove("OWLYTICS_RESPECT_GPC")
             .env_remove("OWLYTICS_PASSWORD_HASH")
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
@@ -52,8 +53,12 @@ impl Fixture {
     }
 
     fn boot_with_hash(&mut self, hash: Option<&str>) -> String {
+        self.boot_command(self.command(hash))
+    }
+
+    fn boot_command(&mut self, mut command: Command) -> String {
         assert!(self.child.is_none());
-        let mut child = self.command(hash).spawn().unwrap();
+        let mut child = command.spawn().unwrap();
         let stdout = child.stdout.take().unwrap();
         self.child = Some(child);
         let (sender, receiver) = mpsc::channel();
@@ -73,13 +78,17 @@ impl Fixture {
     }
 
     fn startup_error(&mut self, hash: Option<&str>) -> String {
+        self.command_error(self.command(hash))
+    }
+
+    fn command_error(&mut self, mut command: Command) -> String {
         assert!(self.child.is_none());
-        self.child = Some(self.command(hash).stderr(Stdio::piped()).spawn().unwrap());
+        self.child = Some(command.stderr(Stdio::piped()).spawn().unwrap());
         let deadline = Instant::now() + Duration::from_secs(10);
         while self.child.as_mut().unwrap().try_wait().unwrap().is_none() {
             assert!(
                 Instant::now() < deadline,
-                "server started without a usable credential"
+                "server started with invalid configuration"
             );
             std::thread::sleep(Duration::from_millis(20));
         }
@@ -208,6 +217,66 @@ fn startup_requires_a_valid_environment_hash_without_stored_credentials() {
                 assert!(!error.contains(hash), "must not print the supplied hash");
             }
         }
+    }
+}
+
+#[tokio::test]
+async fn gpc_environment_setting_updates_tracker_and_cache_across_restarts() {
+    let mut fixture = Fixture::new();
+    let client = client();
+    let mut previous_etag = None;
+    let mut previous_policy = None;
+    // Reuse the database, including when removing the option after disabling it.
+    for value in [None, Some("true"), Some("false"), None] {
+        let mut command = fixture.command(Some(common::hash()));
+        if let Some(value) = value {
+            command.env("OWLYTICS_RESPECT_GPC", value);
+        }
+        let address = fixture.boot_command(command);
+        let url = format!("http://{address}/script.js");
+        let response = client.get(&url).send().await.unwrap();
+        assert_eq!(response.status(), 200);
+        assert_eq!(response.headers()["cache-control"], "public, no-cache");
+        let etag = response.headers()["etag"].clone();
+        let tracker = response.text().await.unwrap();
+        let respect_gpc = value != Some("false");
+        assert!(tracker.contains(&format!("const respectGpc = {respect_gpc};")));
+        assert_eq!(etag, format!("\"{}\"", owlytics::auth::digest(&tracker)));
+        if let Some(old_etag) = previous_etag {
+            let cached = client
+                .get(&url)
+                .header("if-none-match", old_etag)
+                .send()
+                .await
+                .unwrap();
+            let unchanged = previous_policy == Some(respect_gpc);
+            assert_eq!(cached.status(), if unchanged { 304 } else { 200 });
+            assert_eq!(cached.headers()["etag"], etag);
+            assert_eq!(cached.headers()["cache-control"], "public, no-cache");
+            let body = cached.text().await.unwrap();
+            if unchanged {
+                assert!(body.is_empty());
+            } else {
+                assert_eq!(body, tracker);
+            }
+        }
+        previous_etag = Some(etag);
+        previous_policy = Some(respect_gpc);
+        fixture.stop();
+    }
+}
+
+#[test]
+fn invalid_gpc_configuration_fails_before_listening() {
+    for value in ["", "0", "1", "FALSE", "invalid"] {
+        let mut fixture = Fixture::new();
+        let mut command = fixture.command(Some(common::hash()));
+        command.env("OWLYTICS_RESPECT_GPC", value);
+        let error = fixture.command_error(command);
+        assert!(
+            error.contains("OWLYTICS_RESPECT_GPC must be true or false"),
+            "{error}"
+        );
     }
 }
 

@@ -5,6 +5,7 @@ const vm = require('node:vm');
 const code = readFileSync(new URL('../assets/script.js', `file://${__filename}`), 'utf8');
 
 function browser(options = {}) {
+  const tracker = options.respectGpc === undefined ? code : code.replace('const respectGpc = true;', `const respectGpc = ${options.respectGpc};`);
   const calls = [], timers = [], events = new Map(), documentEvents = new Map();
   let next = 1, now = 0;
   const location = {hostname: options.hostname || 'example.com', pathname: '/first', search: options.search || ''};
@@ -28,11 +29,11 @@ function browser(options = {}) {
   };
   context.window = context;
   vm.createContext(context);
-  vm.runInContext(code, context);
+  vm.runInContext(tracker, context);
   return {context, calls, timers, events, documentEvents, advance: ms => now += ms,
     views: () => calls.filter(c => c.url.endsWith('/api/event')),
     engagement: () => calls.filter(c => c.url.endsWith('/api/engagement')).map(c => JSON.parse(c.body)),
-    run: () => vm.runInContext(code, context)};
+    run: () => vm.runInContext(tracker, context)};
 }
 
 test('sends paths without query strings, fragments, credentials or storage', () => {
@@ -71,6 +72,44 @@ test('honors DNT, GPC, automated browsers and local development defaults', () =>
   assert.equal(browser({hostname: 'localhost', local: true}).calls.length, 1);
 });
 
+test('GPC policy defaults to suppression and can explicitly enable or disable it for both collectors', () => {
+  for (const respectGpc of [undefined, true, false]) {
+    const b = browser({respectGpc, navigator: {globalPrivacyControl: true}});
+    assert.equal(b.views().length, respectGpc === false ? 1 : 0);
+    b.advance(5000);
+    b.events.get('pagehide')?.();
+    assert.equal(b.engagement().length, respectGpc === false ? 1 : 0);
+    for (const signal of [{doNotTrack: '1'}, {webdriver: true}]) {
+      const blocked = browser({respectGpc, navigator: {globalPrivacyControl: true, ...signal}});
+      blocked.events.get('pagehide')?.();
+      assert.equal(blocked.calls.length, 0);
+    }
+  }
+});
+
+test('disabled GPC suppression allows navigation, engagement and retries after GPC changes', async () => {
+  const b = browser({respectGpc: false, fetch: () => Promise.resolve({status: 503})});
+  await new Promise(setImmediate);
+  b.context.navigator.globalPrivacyControl = true;
+  b.timers.shift()();
+  assert.equal(b.views().length, 2, 'GPC does not cancel the pending pageview retry');
+  b.advance(5000);
+  b.context.location.pathname = '/next';
+  b.context.history.pushState();
+  assert.equal(b.views().length, 3);
+  assert.equal(b.engagement().length, 1);
+  await new Promise(setImmediate);
+  const count = b.calls.length;
+  b.context.navigator.doNotTrack = '1';
+  b.advance(5000);
+  b.events.get('pagehide')();
+  b.context.location.pathname = '/private';
+  b.context.history.pushState();
+  while (b.timers.length) b.timers.shift()();
+  await new Promise(setImmediate);
+  assert.equal(b.calls.length, count, 'DNT stops navigation, engagement and both kinds of retry');
+});
+
 test('waits for prerender activation', () => {
   const b = browser({prerender: true});
   assert.equal(b.calls.length, 0);
@@ -96,14 +135,16 @@ test('retries temporary failures at most twice using the same request ID', async
 });
 
 test('new privacy preferences stop navigation events and pending retries', async () => {
-  for (const preference of ['doNotTrack', 'globalPrivacyControl']) {
-    const b = browser({fetch: () => Promise.resolve({status:503})});
+  for (const [respectGpc, preference] of [[undefined, 'doNotTrack'], [undefined, 'globalPrivacyControl'], [true, 'globalPrivacyControl'], [false, 'doNotTrack']]) {
+    const b = browser({respectGpc, fetch: () => Promise.resolve({status:503})});
     await new Promise(setImmediate);
     assert.equal(b.timers.length,1);
     b.context.navigator[preference] = preference === 'doNotTrack' ? '1' : true;
     b.context.location.pathname = '/private';
     b.context.history.pushState();
     b.documentEvents.get('turbo:load')();
+    b.advance(5000);
+    b.events.get('pagehide')();
     b.timers.shift()();
     await new Promise(setImmediate);
     assert.equal(b.calls.length,1);

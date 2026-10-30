@@ -30,6 +30,10 @@ impl App {
 }
 
 pub fn router(db: Database, config: Config) -> Router {
+    let tracker = include_str!("../assets/script.js").replace(
+        "const respectGpc = true;",
+        &format!("const respectGpc = {};", config.respect_gpc),
+    );
     let app = App {
         db,
         config,
@@ -54,10 +58,7 @@ pub fn router(db: Database, config: Config) -> Router {
         .route("/api/engagement", post(engagement))
         .route(
             "/script.js",
-            asset(
-                "text/javascript; charset=utf-8",
-                include_str!("../assets/script.js"),
-            ),
+            asset("text/javascript; charset=utf-8", tracker),
         )
         .route("/login", get(login_page).post(login))
         .route("/logout", post(logout))
@@ -116,10 +117,13 @@ pub fn router(db: Database, config: Config) -> Router {
         .with_state(app)
 }
 
-// Cache only public, embedded assets. Revalidate on each use so an upgrade
-// cannot leave a browser showing an old palette or running an old tracker.
-fn asset(content_type: &'static str, body: &'static str) -> axum::routing::MethodRouter<App> {
-    asset_with_cache(content_type, body, "public, no-cache")
+// Revalidate public assets on each use. The tracker includes the instance's
+// configuration, so changing that configuration also changes its ETag.
+fn asset(
+    content_type: &'static str,
+    body: impl Into<axum::body::Bytes>,
+) -> axum::routing::MethodRouter<App> {
+    asset_bytes(content_type, body, "public, no-cache")
 }
 
 fn asset_with_cache(
@@ -132,13 +136,15 @@ fn asset_with_cache(
 
 fn asset_bytes(
     content_type: &'static str,
-    body: &'static [u8],
+    body: impl Into<axum::body::Bytes>,
     cache_control: &'static str,
 ) -> axum::routing::MethodRouter<App> {
     use sha2::{Digest, Sha256};
-    let etag = format!("\"{:x}\"", Sha256::digest(body));
+    let body = body.into();
+    let etag = format!("\"{:x}\"", Sha256::digest(&body));
     get(move |headers: HeaderMap| {
         let etag = etag.clone();
+        let body = body.clone();
         async move {
             let unchanged = headers
                 .get_all(header::IF_NONE_MATCH)
@@ -294,7 +300,7 @@ async fn collect_request(
         return StatusCode::FORBIDDEN.into_response();
     };
     let mut response = if headers.get("dnt").is_some_and(|v| v == "1")
-        || headers.get("sec-gpc").is_some_and(|v| v == "1")
+        || (app.config.respect_gpc && headers.get("sec-gpc").is_some_and(|v| v == "1"))
     {
         StatusCode::NO_CONTENT.into_response()
     } else {

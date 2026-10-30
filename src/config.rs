@@ -8,6 +8,7 @@ pub struct Config {
     /// Environment fallback; validated at startup only if SQLite has no credential.
     pub password_hash: String,
     pub trusted_proxies: Vec<ipnet::IpNet>,
+    pub respect_gpc: bool,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -22,6 +23,10 @@ impl Config {
             &std::env::var("OWLYTICS_URL").unwrap_or_else(|_| "http://localhost:3000".into()),
             &std::env::var("OWLYTICS_PASSWORD_HASH").unwrap_or_default(),
         )?;
+        config.respect_gpc = std::env::var("OWLYTICS_RESPECT_GPC")
+            .unwrap_or_else(|_| "true".into())
+            .parse()
+            .map_err(|_| ConfigError("OWLYTICS_RESPECT_GPC must be true or false".into()))?;
         config.trusted_proxies = std::env::var("OWLYTICS_TRUSTED_PROXIES")
             .unwrap_or_default()
             .split(',')
@@ -68,6 +73,7 @@ impl Config {
             public_url,
             password_hash: password_hash.into(),
             trusted_proxies: Vec::new(),
+            respect_gpc: true,
         })
     }
 

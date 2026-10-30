@@ -6,7 +6,7 @@ use std::{
     path::PathBuf,
     process::{Child, Command, Stdio},
     sync::mpsc,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 struct Fixture {
@@ -26,19 +26,34 @@ impl Fixture {
         }
     }
 
-    fn boot(&mut self) -> String {
-        let mut child = Command::new(env!("CARGO_BIN_EXE_owlytics"))
+    fn database(&self) -> PathBuf {
+        self.directory.join("nested/analytics.sqlite")
+    }
+
+    fn command(&self, hash: Option<&str>) -> Command {
+        let mut command = Command::new(env!("CARGO_BIN_EXE_owlytics"));
+        command
             .env("OWLYTICS_BIND", "127.0.0.1:0")
-            .env(
-                "OWLYTICS_DATABASE",
-                self.directory.join("nested/analytics.sqlite"),
-            )
+            .env("OWLYTICS_DATABASE", self.database())
             .env("OWLYTICS_URL", "http://localhost:3000")
-            .env("OWLYTICS_PASSWORD_HASH", common::config().password_hash)
+            .env("OWLYTICS_TRUSTED_PROXIES", "")
+            .env_remove("OWLYTICS_PASSWORD_HASH")
+            .stdin(Stdio::null())
             .stdout(Stdio::piped())
-            .stderr(Stdio::inherit())
-            .spawn()
-            .unwrap();
+            .stderr(Stdio::inherit());
+        if let Some(hash) = hash {
+            command.env("OWLYTICS_PASSWORD_HASH", hash);
+        }
+        command
+    }
+
+    fn boot(&mut self) -> String {
+        self.boot_with_hash(Some(&common::config().password_hash))
+    }
+
+    fn boot_with_hash(&mut self, hash: Option<&str>) -> String {
+        assert!(self.child.is_none());
+        let mut child = self.command(hash).spawn().unwrap();
         let stdout = child.stdout.take().unwrap();
         self.child = Some(child);
         let (sender, receiver) = mpsc::channel();
@@ -55,6 +70,40 @@ impl Fixture {
             .strip_prefix("Owlytics listening on http://")
             .expect("missing startup address")
             .to_owned()
+    }
+
+    fn startup_error(&mut self, hash: Option<&str>) -> String {
+        assert!(self.child.is_none());
+        self.child = Some(self.command(hash).stderr(Stdio::piped()).spawn().unwrap());
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while self.child.as_mut().unwrap().try_wait().unwrap().is_none() {
+            assert!(
+                Instant::now() < deadline,
+                "server started without a usable credential"
+            );
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        let output = self.child.take().unwrap().wait_with_output().unwrap();
+        assert!(!output.status.success());
+        assert!(output.stdout.is_empty(), "must fail before listening");
+        String::from_utf8(output.stderr).unwrap()
+    }
+
+    fn reset_password(&self, password: &str, hash: Option<&str>) -> std::process::Output {
+        let mut child = self
+            .command(hash)
+            .arg("reset-password")
+            .stdin(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        child
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(password.as_bytes())
+            .unwrap();
+        child.wait_with_output().unwrap()
     }
 
     fn stop(&mut self) {
@@ -131,6 +180,257 @@ fn binary_creates_persistent_database_and_recovers_after_process_stop() {
         .query_row("PRAGMA integrity_check", [], |row| row.get(0))
         .unwrap();
     assert_eq!(integrity, "ok");
+}
+
+#[test]
+fn startup_requires_a_valid_environment_hash_without_stored_credentials() {
+    let unsupported = common::hash().replace("m=7168", "m=1048576");
+    for existing_database in [false, true] {
+        for (hash, message) in [
+            (None, "set OWLYTICS_PASSWORD_HASH"),
+            (Some(""), "set OWLYTICS_PASSWORD_HASH"),
+            (Some("invalid-hash"), "OWLYTICS_PASSWORD_HASH is invalid"),
+            (
+                Some(unsupported.as_str()),
+                "OWLYTICS_PASSWORD_HASH is invalid",
+            ),
+        ] {
+            let mut fixture = Fixture::new();
+            if existing_database {
+                healthcheck(&fixture.boot());
+                fixture.stop();
+            }
+            let error = fixture.startup_error(hash);
+            assert!(error.contains("No stored owner credential"), "{error}");
+            assert!(error.contains(message), "{error}");
+            assert!(error.contains("owlytics hash-password"), "{error}");
+            if let Some(hash) = hash.filter(|hash| !hash.is_empty()) {
+                assert!(!error.contains(hash), "must not print the supplied hash");
+            }
+        }
+    }
+}
+
+fn csrf(html: &str) -> String {
+    html.split("name=\"csrf\" value=\"")
+        .nth(1)
+        .unwrap()
+        .split('"')
+        .next()
+        .unwrap()
+        .to_owned()
+}
+
+fn cookie(response: &reqwest::Response) -> String {
+    response.headers()[reqwest::header::SET_COOKIE]
+        .to_str()
+        .unwrap()
+        .split(';')
+        .next()
+        .unwrap()
+        .to_owned()
+}
+
+fn client() -> reqwest::Client {
+    reqwest::Client::builder()
+        .no_proxy()
+        .redirect(reqwest::redirect::Policy::none())
+        .timeout(Duration::from_secs(5))
+        .build()
+        .unwrap()
+}
+
+async fn login(client: &reqwest::Client, address: &str, password: &str) -> reqwest::Response {
+    let page = client
+        .get(format!("http://{address}/login"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(page.status(), 200);
+    let pre_cookie = cookie(&page);
+    let token = csrf(&page.text().await.unwrap());
+    client
+        .post(format!("http://{address}/login"))
+        .header("Origin", "http://localhost:3000")
+        .header("Cookie", pre_cookie)
+        .form(&[("csrf", token.as_str()), ("password", password)])
+        .send()
+        .await
+        .unwrap()
+}
+
+async fn settings(client: &reqwest::Client, address: &str, session: &str) -> reqwest::Response {
+    client
+        .get(format!("http://{address}/settings"))
+        .header("Cookie", session)
+        .send()
+        .await
+        .unwrap()
+}
+
+#[tokio::test]
+async fn environment_credentials_remain_active_until_changed_in_settings() {
+    let mut fixture = Fixture::new();
+    let client = client();
+    let address = fixture.boot();
+    let signed_in = login(&client, &address, common::PASSWORD).await;
+    assert_eq!(signed_in.status(), 303);
+    let initial_session = cookie(&signed_in);
+    fixture.stop();
+
+    // Environment-only installations still change passwords by changing the hash.
+    let environment_password = "a replacement environment password";
+    let environment_hash = owlytics::auth::hash_password(environment_password).unwrap();
+    let address = fixture.boot_with_hash(Some(&environment_hash));
+    assert_eq!(
+        settings(&client, &address, &initial_session).await.status(),
+        303
+    );
+    assert_eq!(
+        login(&client, &address, common::PASSWORD).await.status(),
+        401
+    );
+    let signed_in = login(&client, &address, environment_password).await;
+    assert_eq!(signed_in.status(), 303);
+    let session = cookie(&signed_in);
+    let connection = rusqlite::Connection::open(fixture.database()).unwrap();
+    assert!(
+        owlytics::auth::stored_owner_hash(&connection)
+            .unwrap()
+            .is_none()
+    );
+
+    let page = settings(&client, &address, &session).await;
+    assert_eq!(page.status(), 200);
+    let token = csrf(&page.text().await.unwrap());
+    let password = "a password saved through settings";
+    let changed = client
+        .post(format!("http://{address}/settings"))
+        .header("Origin", "http://localhost:3000")
+        .header("Cookie", &session)
+        .form(&[
+            ("csrf", token.as_str()),
+            ("current_password", environment_password),
+            ("new_password", password),
+            ("confirm_password", password),
+        ])
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(changed.status(), 303);
+    assert_eq!(settings(&client, &address, &session).await.status(), 303);
+    let signed_in = login(&client, &address, password).await;
+    assert_eq!(signed_in.status(), 303);
+    let stored_session = cookie(&signed_in);
+    fixture.stop();
+
+    // The saved password and its sessions survive restarts regardless of the fallback.
+    let unsupported = common::hash().replace("m=7168", "m=1048576");
+    for hash in [
+        Some(common::hash()),
+        None,
+        Some(""),
+        Some("invalid-hash"),
+        Some(&unsupported),
+    ] {
+        // Keep these rapid restarts independent of the persistent login throttle.
+        connection
+            .execute(
+                "UPDATE login_limit SET window_start=?1",
+                [owlytics::auth::now() - 61],
+            )
+            .unwrap();
+        let address = fixture.boot_with_hash(hash);
+        healthcheck(&address);
+        assert_eq!(
+            settings(&client, &address, &stored_session).await.status(),
+            200
+        );
+        assert_eq!(
+            login(&client, &address, common::PASSWORD).await.status(),
+            401
+        );
+        assert_eq!(
+            login(&client, &address, environment_password)
+                .await
+                .status(),
+            401
+        );
+        assert_eq!(login(&client, &address, password).await.status(), 303);
+        fixture.stop();
+    }
+}
+
+#[tokio::test]
+async fn cli_recovery_without_environment_hash_revokes_sessions_and_persists() {
+    let mut fixture = Fixture::new();
+    let client = client();
+    let address = fixture.boot();
+    let signed_in = login(&client, &address, common::PASSWORD).await;
+    assert_eq!(signed_in.status(), 303);
+    let mut session = cookie(&signed_in);
+    let mut previous_password = common::PASSWORD;
+
+    // Reject bad input without replacing credentials or revoking valid sessions.
+    let rejected = fixture.reset_password("short\n", None);
+    assert!(!rejected.status.success());
+    assert_eq!(settings(&client, &address, &session).await.status(), 200);
+
+    for (hash, password) in [
+        (None, "a recovered password without environment"),
+        (
+            Some("invalid-hash"),
+            "another recovered password with invalid environment",
+        ),
+    ] {
+        let connection = rusqlite::Connection::open(fixture.database()).unwrap();
+        connection
+            .execute(
+                "INSERT OR REPLACE INTO login_limit VALUES(1,?1,10)",
+                [owlytics::auth::now()],
+            )
+            .unwrap();
+        let output = fixture.reset_password(&format!("{password}\n"), hash);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert_eq!(
+            String::from_utf8(output.stdout).unwrap().trim(),
+            "Password reset. All sessions signed out."
+        );
+        for table in ["owner_sessions", "login_limit"] {
+            let count: i64 = connection
+                .query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |r| r.get(0))
+                .unwrap();
+            assert_eq!(count, 0, "{table}");
+        }
+        assert_eq!(settings(&client, &address, &session).await.status(), 303);
+        assert_eq!(
+            login(&client, &address, previous_password).await.status(),
+            401
+        );
+        let signed_in = login(&client, &address, password).await;
+        assert_eq!(signed_in.status(), 303);
+        session = cookie(&signed_in);
+        previous_password = password;
+    }
+    fixture.stop();
+
+    for hash in [None, Some("invalid-hash"), Some(common::hash())] {
+        let address = fixture.boot_with_hash(hash);
+        assert_eq!(settings(&client, &address, &session).await.status(), 200);
+        assert_eq!(
+            login(&client, &address, common::PASSWORD).await.status(),
+            401
+        );
+        assert_eq!(
+            login(&client, &address, previous_password).await.status(),
+            303
+        );
+        fixture.stop();
+    }
 }
 
 #[test]

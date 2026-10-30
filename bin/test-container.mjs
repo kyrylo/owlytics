@@ -40,6 +40,21 @@ const form = (path, cookie, values) => fetch(`${address}${path}`, {
   headers: {Origin: origin, Cookie: cookie, 'Content-Type': 'application/x-www-form-urlencoded'},
   body: new URLSearchParams(values),
 });
+function start(hash) {
+  docker('run', '--detach', '--name', name, '--read-only', '--cap-drop=ALL',
+    '--tmpfs', '/tmp:rw,noexec,nosuid,size=32m',
+    '--publish', '127.0.0.1::3000', '--volume', `${volume}:/data`,
+    ...(hash === undefined ? [] : ['--env', `OWLYTICS_PASSWORD_HASH=${hash}`]),
+    '--env', `OWLYTICS_URL=${origin}`, image);
+  locate();
+}
+
+async function attemptPassword(password) {
+  const page = await fetch(`${address}/login`);
+  assert.equal(page.status, 200);
+  const cookie = page.headers.getSetCookie()[0].split(';')[0];
+  return form('/login', cookie, {csrf: csrf(await page.text()), password});
+}
 
 docker('image', 'inspect', image);
 const hash = execFileSync('docker', ['run', '--rm', '-i', image, 'hash-password'], {
@@ -47,11 +62,7 @@ const hash = execFileSync('docker', ['run', '--rm', '-i', image, 'hash-password'
 }).trim();
 docker('volume', 'create', volume);
 try {
-  docker('run', '--detach', '--name', name, '--read-only', '--cap-drop=ALL',
-    '--tmpfs', '/tmp:rw,noexec,nosuid,size=32m',
-    '--publish', '127.0.0.1::3000', '--volume', `${volume}:/data`,
-    '--env', `OWLYTICS_PASSWORD_HASH=${hash}`, '--env', `OWLYTICS_URL=${origin}`, image);
-  locate();
+  start(hash);
   await healthy();
   assert.equal(docker('exec', name, 'id', '-u'), '10001');
   assert.equal(docker('exec', name, 'printenv', 'SQLITE_TMPDIR'), '/data');
@@ -204,7 +215,25 @@ try {
   await healthy();
   await checkReport();
   await checkImportedFilter();
-  console.log('Container passes: non-root, license notices, health, login, collection, engagement, deduplication, assets, imports, backup/restore, and restart persistence.');
+
+  // Recover with the README's disposable-container command, without an env hash.
+  const recovered = 'recovered container owner password';
+  const reset = execFileSync('docker', ['run', '--rm', '-i', '--volume', `${volume}:/data`, image, 'reset-password'], {
+    input: recovered, encoding: 'utf8', timeout: 20000,
+  });
+  assert.match(reset, /Password reset\. All sessions signed out\./);
+  const revoked = await fetch(`${address}/`, {headers: {Cookie: session}, redirect: 'manual'});
+  assert.equal(revoked.status, 303);
+  assert.equal((await attemptPassword(password)).status, 401);
+  assert.equal((await attemptPassword(recovered)).status, 303);
+  for (const fallback of [undefined, 'invalid-hash', hash]) {
+    docker('rm', '--force', name);
+    start(fallback);
+    await healthy();
+    assert.equal((await attemptPassword(password)).status, 401);
+    assert.equal((await attemptPassword(recovered)).status, 303);
+  }
+  console.log('Container passes: non-root, license notices, health, login, collection, engagement, deduplication, assets, imports, backup/restore, restart persistence, and password recovery without an environment hash.');
 } catch (error) {
   console.error(docker('logs', name));
   throw error;

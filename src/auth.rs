@@ -8,18 +8,21 @@ use subtle::ConstantTimeEq;
 
 pub const SESSION_SECONDS: i64 = 7 * 24 * 60 * 60;
 
-/// Environment credentials bootstrap an installation. Once changed in Settings,
-/// the SQLite credential takes precedence, including after a restart.
-pub fn owner_hash(connection: &rusqlite::Connection, initial: &str) -> rusqlite::Result<String> {
+pub fn stored_owner_hash(connection: &rusqlite::Connection) -> rusqlite::Result<Option<String>> {
     use rusqlite::OptionalExtension;
-    Ok(connection
+    connection
         .query_row(
             "SELECT password_hash FROM owner_credentials WHERE id=1",
             [],
             |r| r.get(0),
         )
-        .optional()?
-        .unwrap_or_else(|| initial.to_owned()))
+        .optional()
+}
+
+/// Environment credentials bootstrap an installation. Once changed in Settings
+/// or reset-password, SQLite takes precedence, including after a restart.
+pub fn owner_hash(connection: &rusqlite::Connection, initial: &str) -> rusqlite::Result<String> {
+    Ok(stored_owner_hash(connection)?.unwrap_or_else(|| initial.to_owned()))
 }
 
 pub fn replace_owner_password(

@@ -450,6 +450,7 @@ async fn changed_password_survives_restart_backup_and_cli_recovery_revokes_sessi
     let mut child = std::process::Command::new(env!("CARGO_BIN_EXE_owlytics"))
         .arg("reset-password")
         .env("OWLYTICS_DATABASE", &path)
+        .env_remove("OWLYTICS_PASSWORD_HASH")
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .spawn()

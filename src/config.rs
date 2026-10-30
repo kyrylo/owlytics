@@ -5,6 +5,7 @@ pub struct Config {
     pub bind: SocketAddr,
     pub database: PathBuf,
     pub public_url: url::Url,
+    /// Environment fallback; validated at startup only if SQLite has no credential.
     pub password_hash: String,
     pub trusted_proxies: Vec<ipnet::IpNet>,
 }
@@ -19,7 +20,7 @@ impl Config {
             &std::env::var("OWLYTICS_BIND").unwrap_or_else(|_| "127.0.0.1:3000".into()),
             &std::env::var("OWLYTICS_DATABASE").unwrap_or_else(|_| "data/owlytics.sqlite".into()),
             &std::env::var("OWLYTICS_URL").unwrap_or_else(|_| "http://localhost:3000".into()),
-            &std::env::var("OWLYTICS_PASSWORD_HASH").map_err(|_| ConfigError("Set OWLYTICS_PASSWORD_HASH using `owlytics hash-password` before starting the server".into()))?,
+            &std::env::var("OWLYTICS_PASSWORD_HASH").unwrap_or_default(),
         )?;
         config.trusted_proxies = std::env::var("OWLYTICS_TRUSTED_PROXIES")
             .unwrap_or_default()
@@ -61,12 +62,6 @@ impl Config {
         {
             return Err(ConfigError("OWLYTICS_URL must be an HTTP(S) origin without credentials, path, query, or fragment".into()));
         }
-        if !crate::auth::validate_hash(password_hash) {
-            return Err(ConfigError(
-                "OWLYTICS_PASSWORD_HASH is invalid; generate it with `owlytics hash-password`"
-                    .into(),
-            ));
-        }
         Ok(Self {
             bind,
             database: database.into(),
@@ -74,6 +69,21 @@ impl Config {
             password_hash: password_hash.into(),
             trusted_proxies: Vec::new(),
         })
+    }
+
+    /// Call after opening SQLite, only when there is no stored owner credential.
+    pub fn validate_initial_password(&self) -> Result<(), ConfigError> {
+        if self.password_hash.is_empty() {
+            return Err(ConfigError(
+                "No stored owner credential; set OWLYTICS_PASSWORD_HASH using `owlytics hash-password` before starting the server".into(),
+            ));
+        }
+        if !crate::auth::validate_hash(&self.password_hash) {
+            return Err(ConfigError(
+                "No stored owner credential; OWLYTICS_PASSWORD_HASH is invalid; generate it with `owlytics hash-password`".into(),
+            ));
+        }
+        Ok(())
     }
 }
 

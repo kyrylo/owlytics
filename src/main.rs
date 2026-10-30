@@ -49,6 +49,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .enable_all()
         .build()?
         .block_on(async {
+            if db
+                .read(|c| owlytics::auth::stored_owner_hash(c))
+                .await?
+                .is_none()
+            {
+                config.validate_initial_password()?;
+            }
             let maintenance = db.clone();
             tokio::spawn(async move {
                 let mut interval = tokio::time::interval(std::time::Duration::from_secs(60));
@@ -67,7 +74,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .into_make_service_with_connect_info::<std::net::SocketAddr>(),
             )
             .with_graceful_shutdown(shutdown())
-            .await
+            .await?;
+            Ok::<_, Box<dyn std::error::Error>>(())
         })?;
     Ok(())
 }

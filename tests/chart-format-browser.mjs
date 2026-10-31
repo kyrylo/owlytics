@@ -53,7 +53,7 @@ c.commit()
       if(pointCount>1) assert.deepEqual(await page.locator('.chart-incomplete').evaluate(e=>getComputedStyle(e).strokeDasharray.split(/[ ,]+/).map(parseFloat)),[3,3]);
 
       if(twelve) {
-        for(const [width,scheme] of [[1440,'light'],[390,'dark'],[360,'light']]) {
+        for(const [width,scheme] of [[1440,'light'],[601,'dark'],[600,'light'],[480,'dark'],[414,'light'],[390,'dark'],[381,'light'],[360,'light']]) {
           await page.setViewportSize({width,height:1000});await page.emulateMedia({colorScheme:scheme});
           await visit('/sites/1?period=year&interval=month&metric=pageviews&compare=off');
           await page.screenshot({path:join(output,`chart-months-${scheme}-${width}.png`),fullPage:true});

@@ -310,7 +310,8 @@ pre { overflow-x:auto; white-space:pre-wrap; overflow-wrap:anywhere; background:
 .chart-ticks text{fill:var(--muted);font-size:.65rem}
 .chart-labels .axis-short{display:none}
 @media(max-width:600px){.chart-labels .axis-long{display:none}.chart-labels .axis-short{display:inline}}
-@media(max-width:380px){.chart-ticks:has(>text:nth-child(6))>text[data-clock]:not([data-clock=""]):nth-child(even){display:none}}
+/* Localized minute labels such as 12:00am need more room on phone screens. */
+@media(max-width:600px){.chart-ticks:has(>text:nth-child(6))>text[data-clock]:not([data-clock=""]):nth-child(even){display:none}}
 
 /* Metric comparisons share the server's exact row/date values. */
 .row-value{display:inline-flex;align-items:center;gap:.3rem;white-space:nowrap;cursor:help;font-variant-numeric:tabular-nums}.row-change{font-style:normal;font-size:.72rem;width:.7rem;text-align:center}.row-value:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:2px}

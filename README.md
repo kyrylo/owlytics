@@ -1,14 +1,18 @@
 # Owlytics
 
-Small, self-hosted web analytics built with Rust and SQLite. One executable, one
-database file, one owner, as many websites as you need.
+Small, self-hosted web analytics. One Rust executable, one SQLite database,
+as many websites as you need.
 
-See visitors, pageviews, traffic sources, popular pages, and locations. Cookieless
-tracking, no stored raw IP addresses, and support for importing Plausible history.
+See how people find your site and what they read. Visitors, pageviews, traffic
+sources, popular pages, and locations are all there. You can bring your history
+from Plausible, too.
 
-**Early beta.** Keep your current analytics running while evaluating Owlytics.
+No cookies. No stored raw IP addresses. Owlytics respects Do Not Track and Global
+Privacy Control by default. [More about collection](docs/privacy.md).
 
-## Install
+**It's an early beta.** Keep your current analytics running while you try it out.
+
+## Try it
 
 Install Rust 1.96, then build:
 
@@ -18,7 +22,7 @@ cd owlytics
 cargo build --release --locked
 ```
 
-Choose an owner password of at least 12 characters and start Owlytics (Bash/Zsh):
+Pick a password with at least 12 characters and start Owlytics (Bash/Zsh):
 
 ```sh
 printf 'Owner password: '
@@ -29,129 +33,23 @@ unset owlytics_password
 target/release/owlytics
 ```
 
-Open [localhost:3000](http://localhost:3000) and sign in with that password. Select
-**Add website**, then paste its tracker snippet into your website's `<head>`.
-There is no default password or username. Change your password in **Settings**.
+Open [localhost:3000](http://localhost:3000) and sign in with that password. No
+username needed. Click **Add website** and paste the tracker snippet into your
+site's `<head>`. You're ready to collect stats.
 
-Data is stored in `data/owlytics.sqlite`. Keep this directory between restarts.
-Until you change the password in Settings or with `reset-password`, supply a valid
-`OWLYTICS_PASSWORD_HASH` each time you start the server; save it in your service
-manager's environment configuration. In this mode, changing the environment hash
-changes the password and invalidates existing sessions.
+You can also [run it with Docker](docs/installation.md#docker).
 
-Settings and `reset-password` save the new credential in SQLite. That credential
-takes precedence on every subsequent start: `OWLYTICS_PASSWORD_HASH` is optional
-and ignored, even if it is invalid. Changing or removing the environment hash
-cannot override a stored password. If SQLite has no stored credential, a missing
-or invalid environment hash prevents startup with an error.
+## Keep it running
 
-See [.env.example](.env.example) for the available settings. Owlytics reads
-environment variables, not `.env` files.
+Your data lives in `data/owlytics.sqlite`. Keep that directory between restarts.
+Save `OWLYTICS_PASSWORD_HASH` in your service manager's environment, or change
+your password in **Settings** to save it in the database.
 
-### Docker
+All settings are in [.env.example](.env.example). Export them yourself or use your
+service manager; Owlytics doesn't load `.env` files.
 
-With `OWLYTICS_PASSWORD_HASH` exported above:
-
-```sh
-docker build -t owlytics:local .
-docker run -d --name owlytics --restart unless-stopped \
-  -p 127.0.0.1:3000:3000 -v owlytics_data:/data \
-  -e OWLYTICS_PASSWORD_HASH -e OWLYTICS_URL=http://localhost:3000 \
-  owlytics:local
-```
-
-Stop the native server first if it is using port 3000. The Docker volume keeps
-your data. For public access, use an HTTPS reverse proxy, set `OWLYTICS_URL` to
-your public origin, and set `OWLYTICS_TRUSTED_PROXIES` to the proxy's IP or CIDR.
-Keep port 3000 private.
-
-### Reset a forgotten password
-
-`reset-password` reads the new password from stdin, saves it in the existing
-SQLite database, clears the login rate limit, and signs out all sessions. It
-works without `OWLYTICS_PASSWORD_HASH`, including when that variable is invalid.
-Choose a password of at least 12 characters (at most 1024 bytes). The commands
-below use a hidden prompt in Bash/Zsh and a shell builtin to pipe the password;
-do not put the password in command arguments. The subshell disables tracing and
-discards the password variable when it exits.
-
-For a native installation, run from the repository directory as the user who owns
-the database. Adjust the binary and database paths to match your installation:
-
-```sh
-(
-  set +x
-  unset owlytics_password
-  printf 'New owner password: ' >&2
-  IFS= read -r -s owlytics_password || exit 1
-  printf '\n' >&2
-  builtin printf '%s' "$owlytics_password" |
-    OWLYTICS_DATABASE=data/owlytics.sqlite target/release/owlytics reset-password
-)
-```
-
-For the Docker installation above, use the same image and data volume as your
-server. This disposable container works whether the server is running or stopped.
-Keep `-i` to pass stdin; do not add `-t`:
-
-```sh
-(
-  set +x
-  unset owlytics_password
-  printf 'New owner password: ' >&2
-  IFS= read -r -s owlytics_password || exit 1
-  printf '\n' >&2
-  builtin printf '%s' "$owlytics_password" |
-    docker run --rm -i -v owlytics_data:/data owlytics:local reset-password
-)
-```
-
-The command requires an existing database. If you use a different volume, bind
-mount, or `OWLYTICS_DATABASE` path, use that same storage and path for the reset.
-After success, sign in with the new password; a running server needs no restart.
-If the server was stopped, start it normally. You can remove the environment hash
-from its configuration once the credential is stored in SQLite.
-
-### Deploy with Kamal
-
-The included [Kamal configuration](config/deploy.yml) builds the image, provisions
-HTTPS, and mounts a persistent data volume. Install Kamal 2.12, point your hostname
-at your server, and export the deployment variables in [.env.example](.env.example).
-Set `OWLYTICS_TRUSTED_PROXIES` to the server's actual Kamal Docker network CIDR
-(`docker network inspect kamal`; create the network first on a new host). Export
-`KAMAL_REGISTRY_PASSWORD` with a token that can push to your image registry, and
-use the password hash generated above.
-
-```sh
-cp .kamal/secrets.example .kamal/secrets
-kamal setup
-```
-
-Open `https://YOUR_HOSTNAME` and sign in. For later updates, run `kamal deploy`.
-
-## GPC collection policy
-
-`OWLYTICS_RESPECT_GPC` controls whether Owlytics skips analytics from visitors
-sending Global Privacy Control (GPC). It accepts `true` or `false` and defaults
-to `true` when unset, including on existing installations. With `true`, both
-the tracker (`navigator.globalPrivacyControl`) and the pageview and engagement
-endpoints (`Sec-GPC: 1`) suppress collection. Set `OWLYTICS_RESPECT_GPC=false`
-in the server environment to include otherwise eligible GPC traffic. DNT and
-automated-browser filtering remain active in either mode.
-
-Blanket GPC suppression is Owlytics's collection policy; GPC does not universally
-prohibit first-party analytics. Suppression excludes those visitors' pageviews
-and engagement, reducing counts compared with collecting that traffic. Disabling
-it can increase visitor, visit, and pageview counts and change engagement metrics.
-Previously skipped activity is not recovered, and existing data is unchanged.
-
-Restart Owlytics after changing the option (redeploy with Kamal, or recreate a
-Docker container with `-e OWLYTICS_RESPECT_GPC=false`). The server applies the
-setting at startup and embeds it in `/script.js`. The tracker uses
-`Cache-Control: public, no-cache` and a content-based ETag, so browsers revalidate
-it and receive the new setting on the next full page load. Already open pages
-keep their loaded tracker until reloaded; direct requests use the server's current
-setting. Any proxy serving the tracker must honor its revalidation headers.
+- [Deploy with Kamal](docs/installation.md#deploy-with-kamal)
+- [Change or reset your password](docs/administration.md)
 
 ## License
 

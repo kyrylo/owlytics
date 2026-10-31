@@ -10,11 +10,40 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use rusqlite::OptionalExtension;
-use std::{net::IpAddr, time::Duration};
+use std::{
+    collections::HashSet,
+    net::IpAddr,
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 use url::Url;
 
 const LIMIT: usize = 256 * 1024;
+const FRESH_FOR: i64 = 7 * 86400;
+const MISSING_FOR: i64 = 3600;
 type Icon = (String, Vec<u8>);
+
+// Bound outbound discovery and coalesce refreshes of the same website.
+#[derive(Default)]
+pub(crate) struct Fetches(Mutex<HashSet<i64>>);
+
+struct FetchGuard(Arc<Fetches>, i64);
+
+impl Fetches {
+    fn start(self: &Arc<Self>, id: i64) -> Option<FetchGuard> {
+        let mut sites = self.0.lock().unwrap();
+        if sites.len() >= 2 || !sites.insert(id) {
+            return None;
+        }
+        Some(FetchGuard(self.clone(), id))
+    }
+}
+
+impl Drop for FetchGuard {
+    fn drop(&mut self) {
+        self.0.0.lock().unwrap().remove(&self.1);
+    }
+}
 
 fn public_ip(ip: IpAddr) -> bool {
     match ip {
@@ -213,16 +242,53 @@ async fn discover(domain: &str) -> Option<Icon> {
     None
 }
 
-fn response(icon: Icon) -> Response {
-    if icon.1.is_empty() {
-        return StatusCode::NOT_FOUND.into_response();
-    }
-    let mut response = ([(header::CONTENT_TYPE, icon.0)], icon.1).into_response();
+fn response(icon: Icon, headers: &HeaderMap, max_age: i64) -> Response {
+    use sha2::{Digest, Sha256};
+    let mut hash = Sha256::new();
+    hash.update(&icon.0);
+    hash.update([0]);
+    hash.update(&icon.1);
+    let etag = format!("\"{:x}\"", hash.finalize());
+    let unchanged = !icon.1.is_empty()
+        && headers
+            .get_all(header::IF_NONE_MATCH)
+            .iter()
+            .filter_map(|value| value.to_str().ok())
+            .flat_map(|value| value.split(','))
+            .map(str::trim)
+            .any(|value| value == "*" || value.strip_prefix("W/").unwrap_or(value) == etag);
+    let mut response = if icon.1.is_empty() {
+        StatusCode::NOT_FOUND.into_response()
+    } else if unchanged {
+        StatusCode::NOT_MODIFIED.into_response()
+    } else {
+        ([(header::CONTENT_TYPE, icon.0)], icon.1).into_response()
+    };
+    response
+        .headers_mut()
+        .insert(header::ETAG, etag.parse().unwrap());
     response.headers_mut().insert(
         header::CACHE_CONTROL,
-        "private, max-age=3600".parse().unwrap(),
+        format!("private, max-age={max_age}").parse().unwrap(),
     );
     response
+}
+
+async fn refresh(
+    app: App,
+    id: i64,
+    domain: String,
+    cached: Option<Icon>,
+    _guard: FetchGuard,
+) -> Icon {
+    let found = tokio::time::timeout(Duration::from_secs(12), discover(&domain))
+        .await
+        .ok()
+        .flatten();
+    let icon = found.or(cached).unwrap_or_default();
+    let stored = icon.clone();
+    let _ = app.db.call(move |c| c.execute("INSERT INTO site_favicons VALUES(?1,?2,?3,?4) ON CONFLICT(site_id) DO UPDATE SET content_type=excluded.content_type,data=excluded.data,fetched_at=excluded.fetched_at", rusqlite::params![id,stored.0,stored.1,auth::now()])).await;
+    icon
 }
 
 pub(crate) async fn show(
@@ -256,35 +322,57 @@ pub(crate) async fn show(
         Ok(_) => return StatusCode::NOT_FOUND.into_response(),
         Err(_) => return unavailable(),
     };
-    if let Some((mime, data, fetched)) = &cached {
-        if *fetched > auth::now() - if data.is_empty() { 3600 } else { 7 * 86400 } {
-            return response((mime.clone(), data.clone()));
+    if let Some((mime, data, fetched)) = cached {
+        let remaining = fetched
+            + if data.is_empty() {
+                MISSING_FOR
+            } else {
+                FRESH_FOR
+            }
+            - auth::now();
+        let icon = (mime, data);
+        if remaining > 0 {
+            return response(icon, &headers, remaining);
         }
+        // Never make an existing icon wait on the website's DNS/network. Keep
+        // serving it while one bounded background task refreshes the cache.
+        if let Some(guard) = app.favicon_fetch.start(id) {
+            tokio::spawn(refresh(app, id, domain, Some(icon.clone()), guard));
+        }
+        return response(icon, &headers, 60);
     }
-    let Ok(_permit) = app.favicon_fetch.clone().try_acquire_owned() else {
-        return cached.map(|(m, d, _)| response((m, d))).unwrap_or_else(|| {
-            (
-                StatusCode::SERVICE_UNAVAILABLE,
-                [(header::RETRY_AFTER, "2")],
-            )
-                .into_response()
-        });
+    let Some(guard) = app.favicon_fetch.start(id) else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            [(header::RETRY_AFTER, "2")],
+        )
+            .into_response();
     };
-    let found = tokio::time::timeout(Duration::from_secs(12), discover(&domain))
-        .await
-        .ok()
-        .flatten();
-    let icon = found
-        .or_else(|| cached.map(|(m, d, _)| (m, d)))
-        .unwrap_or_default();
-    let stored = icon.clone();
-    let _ = app.db.call(move |c| c.execute("INSERT INTO site_favicons VALUES(?1,?2,?3,?4) ON CONFLICT(site_id) DO UPDATE SET content_type=excluded.content_type,data=excluded.data,fetched_at=excluded.fetched_at", rusqlite::params![id,stored.0,stored.1,auth::now()])).await;
-    response(icon)
+    let icon = refresh(app, id, domain, None, guard).await;
+    let max_age = if icon.1.is_empty() {
+        MISSING_FOR
+    } else {
+        FRESH_FOR
+    };
+    response(icon, &headers, max_age)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn discovery_is_bounded_and_coalesced_until_the_guard_drops() {
+        let fetches = Arc::new(Fetches::default());
+        let first = fetches.start(1).unwrap();
+        assert!(fetches.start(1).is_none());
+        let second = fetches.start(2).unwrap();
+        assert!(fetches.start(3).is_none());
+        drop(first);
+        assert!(fetches.start(3).is_some());
+        drop(second);
+        assert!(fetches.start(1).is_some());
+    }
+
     #[test]
     fn only_public_addresses_are_fetchable() {
         for value in [

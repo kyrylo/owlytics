@@ -17,7 +17,7 @@ pub(crate) struct App {
     pub(crate) db: Database,
     pub(crate) config: Config,
     pub(crate) password_check: Arc<Semaphore>,
-    pub(crate) favicon_fetch: Arc<Semaphore>,
+    pub(crate) favicon_fetch: Arc<crate::favicons::Fetches>,
 }
 
 impl App {
@@ -38,7 +38,7 @@ pub fn router(db: Database, config: Config) -> Router {
         db,
         config,
         password_check: Arc::new(Semaphore::new(1)),
-        favicon_fetch: Arc::new(Semaphore::new(2)),
+        favicon_fetch: Arc::default(),
     };
     let mut router = Router::new()
         .route("/up", get(up))

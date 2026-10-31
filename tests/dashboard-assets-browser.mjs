@@ -42,7 +42,8 @@ try {
   await page.waitForFunction(()=>!document.querySelector('img').hidden);
   assert.equal(await page.locator('.site-favicon>.report-icon').evaluate(element=>getComputedStyle(element).visibility),'hidden','A transparent favicon must not show the fallback underneath');
   assert.equal(await page.locator('.site-favicon>img').first().evaluate(element=>getComputedStyle(element).backgroundColor),'rgba(0, 0, 0, 0)','Favicons do not acquire an artificial panel-colored box');
-  assert.deepEqual(requested,['/sites/1/favicon'],'Closed menus must not load hidden icons');
+  // Playwright routing disables HTTP caching, so fetch and img each reach the route.
+  assert.deepEqual(requested,['/sites/1/favicon','/sites/1/favicon'],'Closed menus must not load hidden icons');
   const map=page.locator('use').first();
   await page.waitForFunction(()=>document.querySelector('use').getBBox().width>0);
   assert.ok(await map.evaluate(e=>e.getBBox().width>50),'External country geometry renders');
@@ -52,9 +53,9 @@ try {
   }
   await page.locator('summary').click();
   await page.waitForFunction(()=>[...document.images].every(image=>!image.hidden&&image.naturalWidth>0));
-  assert.deepEqual(requested,['/sites/1/favicon','/sites/2/favicon']);
+  assert.deepEqual(requested,['/sites/1/favicon','/sites/1/favicon','/sites/2/favicon','/sites/2/favicon']);
   await page.locator('summary').click();await page.locator('summary').click();
-  assert.equal(requested.length,2,'Reopening a menu does not enqueue its icons again');
+  assert.equal(requested.length,4,'Reopening a menu does not enqueue its icons again');
   const href=await page.locator('[data-country=US]').getAttribute('href');assert.equal(href,'#country');
   assert.deepEqual(errors,[]);
   console.log('PASS: external country geometry, light/dark colors, and deferred menu favicons');

@@ -510,12 +510,47 @@ async fn cached_favicons_are_owner_only_and_svg_is_sandboxed() {
     let icon = request(&app, "/sites/1/favicon", &owner, None, None).await;
     assert_eq!(icon.status(), StatusCode::OK);
     assert_eq!(icon.headers()[header::CONTENT_TYPE], "image/svg+xml");
-    assert!(
-        icon.headers()[header::CACHE_CONTROL]
-            .to_str()
-            .unwrap()
-            .starts_with("private")
-    );
+    let max_age = icon.headers()[header::CACHE_CONTROL]
+        .to_str()
+        .unwrap()
+        .strip_prefix("private, max-age=")
+        .unwrap()
+        .parse::<i64>()
+        .unwrap();
+    assert!((604790..=604800).contains(&max_age));
+    let etag = icon.headers()[header::ETAG].to_str().unwrap();
+    for (cookie, status) in [
+        (&owner[..], StatusCode::NOT_MODIFIED),
+        ("", StatusCode::UNAUTHORIZED),
+    ] {
+        let revalidated = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/sites/1/favicon")
+                    .header(header::COOKIE, cookie)
+                    .header(header::IF_NONE_MATCH, format!("\"other\", W/{etag}"))
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(revalidated.status(), status);
+        if status == StatusCode::NOT_MODIFIED {
+            assert_eq!(revalidated.headers()[header::ETAG], etag);
+            assert!(
+                revalidated
+                    .into_body()
+                    .collect()
+                    .await
+                    .unwrap()
+                    .to_bytes()
+                    .is_empty()
+            );
+        } else {
+            assert_eq!(revalidated.headers()[header::CACHE_CONTROL], "no-store");
+        }
+    }
     assert!(
         icon.headers()[header::CONTENT_SECURITY_POLICY]
             .to_str()
@@ -527,5 +562,52 @@ async fn cached_favicons_are_owner_only_and_svg_is_sandboxed() {
             .await
             .status(),
         StatusCode::NOT_FOUND
+    );
+}
+
+#[tokio::test]
+async fn missing_favicons_are_cached_and_stale_icons_are_served_during_refresh() {
+    let db = Database::open(":memory:").unwrap();
+    db.call(|c| {
+        c.execute(
+            "INSERT INTO sites VALUES(1,'127.0.0.1','UTC',0),(2,'localhost','UTC',0)",
+            [],
+        )?;
+        c.execute(
+            "INSERT INTO site_favicons VALUES(1,'',X'',?1)",
+            [auth::now() - 120],
+        )?;
+        c.execute(
+            "INSERT INTO site_favicons VALUES(2,'image/svg+xml',?1,?2)",
+            rusqlite::params![
+                b"<svg xmlns=\"http://www.w3.org/2000/svg\"/>".as_slice(),
+                auth::now() - 8 * 86400
+            ],
+        )?;
+        Ok(())
+    })
+    .await
+    .unwrap();
+    let app = owlytics::router(db, common::config());
+    let owner = login(&app).await;
+    let missing = request(&app, "/sites/1/favicon", &owner, None, None).await;
+    assert_eq!(missing.status(), StatusCode::NOT_FOUND);
+    let max_age = missing.headers()[header::CACHE_CONTROL]
+        .to_str()
+        .unwrap()
+        .strip_prefix("private, max-age=")
+        .unwrap()
+        .parse::<i64>()
+        .unwrap();
+    assert!((3470..=3480).contains(&max_age));
+    let stale = request(&app, "/sites/2/favicon", &owner, None, None).await;
+    assert_eq!(stale.status(), StatusCode::OK);
+    assert_eq!(
+        stale.headers()[header::CACHE_CONTROL],
+        "private, max-age=60"
+    );
+    assert_eq!(
+        text(stale).await,
+        "<svg xmlns=\"http://www.w3.org/2000/svg\"/>"
     );
 }

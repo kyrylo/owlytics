@@ -565,6 +565,8 @@
   // Serialize updates so a search or a second filter cannot lose a pending
   // selection. Unsent changes to the same control collapse to the latest value.
   let currentURL = new URL(location.href), renderedURL = new URL(location.href), running = false, searchTimer, request, refreshRequest;
+  const refreshInterval = 30000;
+  let refreshedAt = Date.now(), refreshPending = false;
   const jobs = [];
   function follow(link) {
     enqueue({type:'link', key:link.dataset.filterLink, href:link.href});
@@ -592,6 +594,8 @@
     document.querySelector('main.container').replaceWith(main);
     document.title = doc.title;
     renderedURL = new URL(currentURL);
+    refreshedAt = Date.now();
+    refreshPending = false;
     initialize();
     if (typing && main.querySelector(`#${typing.id}`)) main.querySelector(`#${typing.id}`).value = typing.value;
     let target;
@@ -645,12 +649,21 @@
     const search = document.querySelector('.report-search input[type=search]');
     return document.querySelector('.filter-picker,.report-overlay,main details[open],.chart-tooltip:not([hidden]),.map-tooltip:not([hidden])') || document.activeElement?.closest('main a,main button,main input,main select,main textarea,main summary,main .chart-hit') || search && search.value !== search.defaultValue;
   }
-  async function refreshRealtime() {
-    if (!isRealtime() || document.hidden || refreshRequest || running || jobs.length) return;
+  function refreshOnReturn() {
+    if (!dashboard() || document.hidden || Date.now() - refreshedAt < refreshInterval) return;
+    refreshPending = true;
+    refreshReport();
+  }
+  async function refreshReport() {
+    if (!dashboard() || document.hidden || refreshRequest || running || jobs.length) return;
     // Never replace a form, focused control, open menu or chart details while
     // the owner is using it. The next tick resumes after the interaction ends.
     if (editingReport()) { liveStatus('Paused'); return; }
     const before = currentURL.href, controller = new AbortController();
+    // Throttle paired visibility/focus events even if the request fails. Normal
+    // reports retry on the next return, without starting background polling.
+    refreshedAt = Date.now();
+    refreshPending = false;
     refreshRequest = controller;
     const timeout = setTimeout(()=>controller.abort('timeout'),15000);
     try {
@@ -661,7 +674,8 @@
       if (target.origin !== location.origin) throw new Error('Invalid refresh URL');
       if (target.pathname === '/login') { location.assign(target); return; }
       const html = await response.text();
-      if (controller.signal.aborted || running || jobs.length || before !== currentURL.href || document.hidden || editingReport()) return;
+      if (controller.signal.aborted || running || jobs.length || before !== currentURL.href || document.hidden) return;
+      if (editingReport()) { refreshPending = true; liveStatus('Paused'); return; }
       if (target.origin !== location.origin || target.pathname !== currentURL.pathname) throw new Error('Invalid refresh URL');
       render(html,null);
     } catch {
@@ -775,9 +789,11 @@
   });
   window.addEventListener('popstate', () => { jobs.length=0; request?.abort(); refreshRequest?.abort(); location.reload(); });
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) refreshRequest?.abort(); else refreshRealtime();
+    if (document.hidden) refreshRequest?.abort(); else refreshOnReturn();
   });
+  window.addEventListener('focus', refreshOnReturn);
+  window.addEventListener('pageshow', event => { if (event.persisted) refreshOnReturn(); });
   window.addEventListener('pagehide', () => refreshRequest?.abort());
-  setInterval(refreshRealtime,30000);
+  setInterval(() => { if (isRealtime() || refreshPending) refreshReport(); },refreshInterval);
   initialize();
 })();

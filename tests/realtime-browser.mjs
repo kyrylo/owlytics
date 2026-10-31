@@ -195,14 +195,97 @@ c.execute("INSERT INTO events(site_id,received_at,day,visitor,request_id,path,so
     await page.clock.fastForward(60000);
     assert.equal(fetches.length,normalFetches,'Normal reports do not auto-refresh');
 
+    // Returning to an ordinary report reuses the safe refresh path without
+    // turning it into a polling dashboard. Real writes prove it isn't a reload
+    // of the same stale values; the selected audience and view must survive.
+    const report=`${origin}/sites/6?period=day&compare=off&source=Google&metric=pageviews&locations_tab=country`;
+    await visit(report);await blur();await page.mouse.move(0,0);
+    const pageviews=()=>page.locator('.metrics a.metric').filter({hasText:'Pageviews'}).getAttribute('data-value').then(Number);
+    const mark=()=>page.evaluate(()=>document.querySelector('main').dataset.beforeRefresh='');
+    const refreshed=()=>until(()=>page.evaluate(()=>!document.querySelector('main[data-before-refresh]')),'return refresh replaces dashboard');
+    const focus=()=>page.evaluate(()=>window.dispatchEvent(new Event('focus')));
+    const hide=()=>page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});document.dispatchEvent(new Event('visibilitychange'));});
+    const show=()=>page.evaluate(()=>{delete document.hidden;document.dispatchEvent(new Event('visibilitychange'));window.dispatchEvent(new Event('focus'));});
+    const baseline=await pageviews(),reportFetches=fetches.length;
+    await mark();await focus();
+    assert.equal(fetches.length,reportFetches,'A fresh report does not refetch on focus');
+    sql(`stamp=int(time.time());day=datetime.datetime.fromtimestamp(stamp,datetime.timezone.utc).date().isoformat()
+c.execute("INSERT INTO events(site_id,received_at,day,visitor,request_id,path,source,country,browser,device) VALUES(6,?,?,randomblob(16),randomblob(16),'/returned','Google','US','Chrome','Desktop')",(stamp,day))`);
+    await hide();await page.clock.fastForward(3*3600000);
+    assert.equal(fetches.length,reportFetches,'Hidden ordinary reports make no requests');
+    await page.evaluate(()=>window.scrollTo(0,200));
+    const scroll=await page.evaluate(()=>scrollY),reportHistory=await page.evaluate(()=>window.history.length);
+    await show();await refreshed();
+    assert.equal(await pageviews(),baseline+1,'Return after hours shows new matching traffic');
+    assert.equal(fetches.length,reportFetches+1,'Visibility and focus share one refresh');
+    assert.equal(page.url(),report);
+    assert.equal(await page.evaluate(()=>window.history.length),reportHistory);
+    assert.equal(await page.evaluate(()=>scrollY),scroll,'Refresh preserves scroll position');
+    await focus();await page.clock.fastForward(29000);await focus();
+    assert.equal(fetches.length,reportFetches+1,'Rapid window switches are throttled');
+    await page.clock.fastForward(2000);await mark();await focus();await refreshed();
+    assert.equal(fetches.length,reportFetches+2,'Window focus alone refreshes a stale visible report');
+    await page.clock.fastForward(120000);
+    assert.equal(fetches.length,reportFetches+2,'Successful return refresh does not start polling');
+
+    // A return while using a control is deferred until it can be replaced.
+    await page.locator('.date-picker>summary').click();
+    await mark();await focus();
+    assert.equal(fetches.length,reportFetches+2);
+    assert.equal(await page.locator('.date-picker').getAttribute('open'),'');
+    await page.keyboard.press('Escape');await blur();await page.mouse.move(0,0);
+    await page.clock.fastForward(30000);await refreshed();
+    assert.equal(fetches.length,reportFetches+3,'Deferred refresh resumes after the interaction');
+    await page.clock.fastForward(60000);
+    assert.equal(fetches.length,reportFetches+3,'Deferred ordinary refresh also stops after one request');
+
+    await owner.route(pattern,route=>route.request().resourceType()==='fetch'?route.fulfill({status:503,body:'Temporarily unavailable'}):route.continue());
+    await mark();
+    const failedReturn=page.waitForResponse(response=>response.status()===503);
+    await focus();await failedReturn;await focus();
+    assert.equal(fetches.length,reportFetches+4,'Failed return requests are also throttled');
+    assert.equal(await pageviews(),baseline+1,'An offline return keeps the last useful report');
+    assert.equal(await page.locator('main[data-before-refresh]').count(),1);
+    await owner.unroute(pattern);
+    await page.clock.fastForward(60000);
+    assert.equal(fetches.length,reportFetches+4,'A failed ordinary refresh does not start polling');
+    await focus();await refreshed();
+    assert.equal(fetches.length,reportFetches+5,'A later return recovers without a reload');
+
+    await page.clock.fastForward(30000);await mark();
+    await page.evaluate(()=>window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true})));
+    await refreshed();
+    assert.equal(fetches.length,reportFetches+6,'Restoring a cached history page refreshes stale stats');
+
+    // Starting an interaction while the return request is in flight also
+    // defers the update, rather than losing the refresh or closing the menu.
+    let finishReturn,returnStarted=false;
+    const pendingReturn=new Promise(resolve=>finishReturn=resolve);
+    await owner.route(pattern,async route=>{
+      if(route.request().resourceType()!=='fetch')return route.continue();
+      const response=await route.fetch();returnStarted=true;await pendingReturn;
+      await route.fulfill({response});
+    });
+    await page.clock.fastForward(30000);await mark();await focus();
+    await until(()=>returnStarted,'return request starts');
+    await page.locator('.date-picker>summary').click();
+    const returnResponse=page.waitForResponse(response=>response.url()===report);
+    finishReturn();await (await returnResponse).finished();
+    await page.clock.fastForward(30000);
+    assert.equal(await page.locator('main[data-before-refresh]').count(),1,'A late return response keeps the open menu');
+    await owner.unroute(pattern);
+    await page.keyboard.press('Escape');await blur();await page.mouse.move(0,0);
+    await page.clock.fastForward(30000);await refreshed();
+    assert.equal(fetches.length,reportFetches+8,'A discarded return response is retried after the interaction');
+
     const noScript=await browser.newContext({storageState,javaScriptEnabled:false});
     try {
       const fallback=await noScript.newPage();await fallback.goto(base);
-      assert.deepEqual(await fallback.locator('.metrics .metric').evaluateAll(cards=>cards.map(card=>Number(card.dataset.value))),[3,4,5]);
+      assert.deepEqual(await fallback.locator('.metrics .metric').evaluateAll(cards=>cards.map(card=>Number(card.dataset.value))),[4,5,6]);
       assert.equal(await fallback.locator('.chart-hit title').count(),30);
       assert.equal(await fallback.locator('.live-status').isVisible(),false,'Manual reload does not claim to be live');
       await fallback.locator('.panel-source .data-row').filter({hasText:'Google'}).click();
-      assert.deepEqual(await fallback.locator('.metrics .metric').evaluateAll(cards=>cards.map(card=>Number(card.dataset.value))),[3,1,2]);
+      assert.deepEqual(await fallback.locator('.metrics .metric').evaluateAll(cards=>cards.map(card=>Number(card.dataset.value))),[4,2,3]);
     } finally {await noScript.close();}
     await visit();await blur();await page.mouse.move(0,0);
     await owner.clearCookies();

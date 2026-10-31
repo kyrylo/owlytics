@@ -23,6 +23,14 @@ const FRESH_FOR: i64 = 7 * 86400;
 const MISSING_FOR: i64 = 3600;
 type Icon = (String, Vec<u8>);
 
+pub(crate) const SCRIPT: &str = include_str!("../assets/favicons.js");
+
+pub(crate) fn script_url() -> &'static str {
+    static URL: std::sync::LazyLock<String> =
+        std::sync::LazyLock::new(|| format!("/assets/favicons.{}.js", &auth::digest(SCRIPT)[..16]));
+    &URL
+}
+
 // Bound outbound discovery and coalesce refreshes of the same website.
 #[derive(Default)]
 pub(crate) struct Fetches(Mutex<HashSet<i64>>);

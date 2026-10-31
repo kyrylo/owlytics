@@ -680,7 +680,8 @@ async fn project_index_shows_recent_traffic_and_links_to_reports_and_settings() 
     assert!(html.contains("aria-label=\"Settings for example.com\""));
     assert!(!html.contains("theme.js"));
     assert!(!html.contains("data-theme"));
-    assert!(html.contains("src=\"/assets/favicons.js\""));
+    let version = owlytics::auth::digest(include_str!("../assets/favicons.js"));
+    assert!(html.contains(&format!("src=\"/assets/favicons.{}.js\"", &version[..16])));
     assert!(html.contains("data-favicon=\"/sites/1/favicon\""));
 }
 

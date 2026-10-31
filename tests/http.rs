@@ -174,6 +174,7 @@ async fn public_assets_revalidate_without_caching_private_pages() {
         "/assets/logo.svg",
         "/assets/country-shapes.svg",
         "/assets/favicon.svg",
+        "/assets/favicons.js",
     ] {
         let response = app
             .clone()
@@ -192,8 +193,9 @@ async fn public_assets_revalidate_without_caching_private_pages() {
                 owlytics::auth::digest(std::str::from_utf8(&bytes).unwrap())
             )
         );
-        if path == "/assets/country-shapes.svg" {
-            let versioned = format!("/assets/country-shapes.{}.svg", &etag[1..17]);
+        if matches!(path, "/assets/country-shapes.svg" | "/assets/favicons.js") {
+            let (name, extension) = path.rsplit_once('.').unwrap();
+            let versioned = format!("{name}.{}.{extension}", &etag[1..17]);
             let response = app
                 .clone()
                 .oneshot(

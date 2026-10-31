@@ -68,9 +68,14 @@ pub fn router(db: Database, config: Config) -> Router {
         )
         .route(
             "/assets/favicons.js",
-            asset(
+            asset("text/javascript; charset=utf-8", crate::favicons::SCRIPT),
+        )
+        .route(
+            crate::favicons::script_url(),
+            asset_with_cache(
                 "text/javascript; charset=utf-8",
-                include_str!("../assets/favicons.js"),
+                crate::favicons::SCRIPT,
+                "public, max-age=31536000, immutable",
             ),
         )
         .route(
@@ -575,6 +580,7 @@ pub(crate) fn shell(title: &str, body: &str) -> String {
     format!(
         include_str!("../templates/layout.html"),
         title = escape(title),
+        favicon_script = crate::favicons::script_url(),
         body = body
     )
 }

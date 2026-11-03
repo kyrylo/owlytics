@@ -676,7 +676,8 @@ async fn project_index_shows_recent_traffic_and_links_to_reports_and_settings() 
     assert_eq!(html.matches("class=\"site-sparkline\"").count(), 2);
     assert!(html.contains("visitors in last 24h"));
     assert!(html.contains("title=\"1 visitors\">1</strong>"));
-    assert!(html.contains("href=\"/sites/1?period=24h"));
+    assert!(html.contains("class=\"site-card-main\" href=\"/sites/1\""));
+    assert!(html.contains("class=\"site-card-main\" href=\"/sites/2\""));
     assert!(html.contains("aria-label=\"Settings for example.com\""));
     assert!(!html.contains("theme.js"));
     assert!(!html.contains("data-theme"));

@@ -187,7 +187,8 @@ try {
   assert.ok(page.url().endsWith(`/sites/${site}/settings`));
   await page.goto(origin);
   await exampleCard.locator('.site-card-main').click();
-  assert.equal(await metric(page,'Pageviews'), nativeViews);
+  assert.equal(await page.locator('.dashboard-toolbar').getAttribute('data-period'), '28d');
+  assert.equal(await metric(page,'Pageviews'), history.reduce((sum,visitors)=>sum+visitors*2,0));
   checks.push('Rolling 24-hour project counts excluding daily imports, card/report/settings navigation, responsive grid');
   await page.goto(`${origin}/sites/${site}?period=28d`);
   for (const [name, width, height, scheme] of [

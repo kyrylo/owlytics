@@ -96,7 +96,7 @@ pub(crate) async fn home(State(app): State<App>, headers: HeaderMap) -> Response
                 .join(" ");
             let _ = write!(
                 body,
-                "<article class=\"site-card\"><a class=\"site-card-main\" href=\"/sites/{}?period=24h\"><div class=\"site-card-heading\">{}<h2>{}</h2></div><svg class=\"site-sparkline\" viewBox=\"0 0 1000 60\" preserveAspectRatio=\"none\" role=\"img\" aria-label=\"Hourly visitors in the last 24 hours\"><polygon class=\"spark-area\" points=\"0,60 {points} 1000,60\"/><polyline points=\"{points}\"/></svg><div class=\"site-card-footer\"><div class=\"site-visitors\"><strong title=\"{} visitors\">{}</strong><span>visitors in last 24h</span></div>{trend}</div></a><a class=\"site-settings\" href=\"/sites/{}/settings\" aria-label=\"Settings for {}\">⋮</a></article>",
+                "<article class=\"site-card\"><a class=\"site-card-main\" href=\"/sites/{}\"><div class=\"site-card-heading\">{}<h2>{}</h2></div><svg class=\"site-sparkline\" viewBox=\"0 0 1000 60\" preserveAspectRatio=\"none\" role=\"img\" aria-label=\"Hourly visitors in the last 24 hours\"><polygon class=\"spark-area\" points=\"0,60 {points} 1000,60\"/><polyline points=\"{points}\"/></svg><div class=\"site-card-footer\"><div class=\"site-visitors\"><strong title=\"{} visitors\">{}</strong><span>visitors in last 24h</span></div>{trend}</div></a><a class=\"site-settings\" href=\"/sites/{}/settings\" aria-label=\"Settings for {}\">⋮</a></article>",
                 site.id,
                 crate::icons::site(site.id, &site.domain),
                 escape(&site.domain),

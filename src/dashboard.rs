@@ -36,17 +36,7 @@ pub(crate) fn page(title: &str, session: &Session, body: &str) -> Response {
     .into_response()
 }
 
-#[derive(Deserialize, Default)]
-pub(crate) struct HomeQuery {
-    #[serde(default)]
-    deleted: bool,
-}
-
-pub(crate) async fn home(
-    State(app): State<App>,
-    Query(query): Query<HomeQuery>,
-    headers: HeaderMap,
-) -> Response {
+pub(crate) async fn home(State(app): State<App>, headers: HeaderMap) -> Response {
     let session = match owner(&app, &headers).await {
         Ok(value) => value,
         Err(response) => return response,
@@ -58,11 +48,6 @@ pub(crate) async fn home(
     let mut body = String::from(
         "<div class=\"heading home-heading\"><h1>Websites</h1><a class=\"button button-primary\" href=\"/sites/new\"><span aria-hidden=\"true\">+</span> Add website</a></div>",
     );
-    if query.deleted {
-        body.push_str(
-            "<p class=\"notice\" role=\"status\">Website and its analytics data deleted.</p>",
-        );
-    }
     if sites.is_empty() {
         body.push_str("<section class=\"empty\"><img src=\"/assets/owl.svg\" width=\"70\" height=\"100\" alt=\"\"><h2>No websites yet</h2></section>");
     } else {
@@ -333,7 +318,7 @@ pub(crate) async fn delete(
         .await
     {
         Ok(0) => StatusCode::NOT_FOUND.into_response(),
-        Ok(_) => Redirect::to("/?deleted=true").into_response(),
+        Ok(_) => Redirect::to("/").into_response(),
         Err(_) => unavailable(),
     }
 }

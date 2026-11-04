@@ -53,8 +53,11 @@ export async function verifySiteDeletion(browser, origin, storageState, output) 
       }
       await page.getByLabel(`Type ${domain} to confirm`).fill(domain);
       await page.getByRole('button', {name:'Permanently delete website', exact:true}).click();
-      await page.waitForURL(`${origin}/?deleted=true`);
-      assert.equal(await page.getByRole('status').innerText(), 'Website and its analytics data deleted.');
+      await page.waitForURL(`${origin}/`);
+      assert.equal(await page.getByRole('status').count(), 0);
+      await page.reload();
+      assert.equal(page.url(), `${origin}/`);
+      assert.equal(await page.getByRole('status').count(), 0);
       assert.equal(await page.locator('.site-card').count(), initialCount);
       assert.equal(await page.getByRole('link', {name:`Settings for ${domain}`, exact:true}).count(), 0);
       assert.equal((await context.request.get(dashboardUrl)).status(), 404);

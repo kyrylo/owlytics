@@ -196,7 +196,6 @@ input:not([type=hidden]) { font:inherit; min-width:0; padding:.6rem .75rem; bord
 .delete-confirmation>summary { list-style:none; }
 .delete-confirmation>summary::-webkit-details-marker { display:none; }
 .delete-actions { display:flex; flex-wrap:wrap; gap:.75rem; }
-.notice { margin-bottom:1.5rem; padding:.85rem 1rem; border:1px solid var(--border); border-radius:7px; background:var(--panel); color:var(--positive); }
 .date-range { display:flex; align-items:center; gap:.4rem; color:var(--muted); }
 .date-range input { font-size:.78rem; padding:.5rem; }
 .date-range .button { font-size:.78rem; padding:.45rem .7rem; }

@@ -243,7 +243,7 @@ async fn deleting_a_site_cleans_all_data_preserves_other_sites_and_stops_collect
     )
     .await;
     assert_eq!(response.status(), StatusCode::SEE_OTHER);
-    assert_eq!(response.headers()["location"], "/?deleted=true");
+    assert_eq!(response.headers()["location"], "/");
     assert_eq!(counts(&db, 1).await, vec![0; SITE_TABLES.len()]);
     assert_eq!(counts(&db, 2).await, other);
     for path in ["/sites/1", "/sites/1/settings", "/sites/1/export"] {
@@ -252,10 +252,12 @@ async fn deleting_a_site_cleans_all_data_preserves_other_sites_and_stops_collect
             StatusCode::NOT_FOUND
         );
     }
-    let html = text(request(&app, "/?deleted=true", &cookie, None, None).await).await;
-    assert!(html.contains("Website and its analytics data deleted."));
-    assert!(html.contains("other.example"));
-    assert!(!html.contains("href=\"/sites/1\""));
+    for path in ["/", "/?deleted=true"] {
+        let html = text(request(&app, path, &cookie, None, None).await).await;
+        assert!(!html.contains("Website and its analytics data deleted."));
+        assert!(html.contains("other.example"));
+        assert!(!html.contains("href=\"/sites/1\""));
+    }
     assert_eq!(
         request(
             &app,

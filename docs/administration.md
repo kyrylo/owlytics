@@ -1,9 +1,19 @@
-# Passwords
+# Administration
 
 [Back to the README](../README.md)
 
 There's one owner account and no username. To change your password, open
 **Settings**. If you've forgotten it, use `reset-password` below.
+
+## Delete a website
+
+Open the website's settings using the **⋮** link on its card, or choose
+**Website settings** in the dashboard's website dropdown. Under **Delete website**, click
+**Delete website…**, type the domain, then click **Permanently delete website**.
+
+Deletion permanently removes the website and all its collected and imported
+analytics data from Owlytics. Other websites are unaffected. Remove the Owlytics
+tracker snippet from the website when you stop using it.
 
 ## How passwords are stored
 

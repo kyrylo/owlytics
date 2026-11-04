@@ -186,6 +186,17 @@ label { display:block; font-weight:600; font-size:.85rem; margin-bottom:.5rem; }
 input:not([type=hidden]) { font:inherit; min-width:0; padding:.6rem .75rem; border:1px solid var(--border); border-radius:7px; background:var(--panel); color:var(--text); }
 .form-card input:not([type=hidden]),input[type=password] { display:block; width:100%; }
 .form-card .button { margin-top:1.5rem; }
+.website-settings { width:min(100%,800px); margin:1rem auto 4rem; }
+.website-settings .form-card { margin:1.5rem 0; }
+.settings-domain,.delete-confirmation label { overflow-wrap:anywhere; }
+.danger-zone { border-color:color-mix(in srgb,var(--error) 40%,var(--border)); }
+.danger-zone h2 { color:var(--error); }
+.button-danger { color:var(--error); border-color:var(--error); }
+.button-danger:hover { border-color:var(--error); background:color-mix(in srgb,var(--error) 8%,var(--panel)); }
+.delete-confirmation>summary { list-style:none; }
+.delete-confirmation>summary::-webkit-details-marker { display:none; }
+.delete-actions { display:flex; flex-wrap:wrap; gap:.75rem; }
+.notice { margin-bottom:1.5rem; padding:.85rem 1rem; border:1px solid var(--border); border-radius:7px; background:var(--panel); color:var(--positive); }
 .date-range { display:flex; align-items:center; gap:.4rem; color:var(--muted); }
 .date-range input { font-size:.78rem; padding:.5rem; }
 .date-range .button { font-size:.78rem; padding:.45rem .7rem; }

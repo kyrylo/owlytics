@@ -36,7 +36,17 @@ pub(crate) fn page(title: &str, session: &Session, body: &str) -> Response {
     .into_response()
 }
 
-pub(crate) async fn home(State(app): State<App>, headers: HeaderMap) -> Response {
+#[derive(Deserialize, Default)]
+pub(crate) struct HomeQuery {
+    #[serde(default)]
+    deleted: bool,
+}
+
+pub(crate) async fn home(
+    State(app): State<App>,
+    Query(query): Query<HomeQuery>,
+    headers: HeaderMap,
+) -> Response {
     let session = match owner(&app, &headers).await {
         Ok(value) => value,
         Err(response) => return response,
@@ -48,6 +58,11 @@ pub(crate) async fn home(State(app): State<App>, headers: HeaderMap) -> Response
     let mut body = String::from(
         "<div class=\"heading home-heading\"><h1>Websites</h1><a class=\"button button-primary\" href=\"/sites/new\"><span aria-hidden=\"true\">+</span> Add website</a></div>",
     );
+    if query.deleted {
+        body.push_str(
+            "<p class=\"notice\" role=\"status\">Website and its analytics data deleted.</p>",
+        );
+    }
     if sites.is_empty() {
         body.push_str("<section class=\"empty\"><img src=\"/assets/owl.svg\" width=\"70\" height=\"100\" alt=\"\"><h2>No websites yet</h2></section>");
     } else {
@@ -222,21 +237,105 @@ pub(crate) async fn settings(
         Ok(None) => return StatusCode::NOT_FOUND.into_response(),
         Err(_) => return unavailable(),
     };
+    website_settings(&app, &session, &site, "", None)
+}
+
+fn website_settings(
+    app: &App,
+    session: &Session,
+    site: &Site,
+    confirmation: &str,
+    error: Option<&str>,
+) -> Response {
+    let id = site.id;
     let snippet = format!(
         "<script defer data-domain=\"{}\" src=\"{}/script.js\"></script>",
         site.domain,
         app.origin()
     );
+    let open = if error.is_some() { " open" } else { "" };
+    let invalid = if error.is_some() {
+        " aria-invalid=\"true\" aria-describedby=\"delete-error\""
+    } else {
+        ""
+    };
+    let error = error
+        .map(|message| {
+            format!(
+                "<p class=\"error\" id=\"delete-error\" role=\"alert\">{}</p>",
+                escape(message)
+            )
+        })
+        .unwrap_or_default();
     page(
-        &site.domain,
-        &session,
+        &format!("Website settings · {}", site.domain),
+        session,
         &format!(
-            "<a class=\"back\" href=\"/sites/{id}\">← {}</a><section class=\"form-card wide\"><h1>Install</h1><p class=\"muted\">Add this inside your website’s &lt;head&gt;.</p><pre><code>{}</code></pre><p class=\"muted small\">Timezone: {}</p><a class=\"button\" href=\"/sites/{id}\">Open dashboard →</a></section>",
+            "<a class=\"back\" href=\"/sites/{id}\">← {}</a><div class=\"website-settings\"><h1>Website settings</h1><p class=\"muted settings-domain\">{}</p><section class=\"form-card wide\" aria-labelledby=\"install-heading\"><h2 id=\"install-heading\">Install</h2><p class=\"muted\">Add this inside your website’s &lt;head&gt;.</p><pre><code>{}</code></pre><p class=\"muted small\">Timezone: {}</p><a class=\"button\" href=\"/sites/{id}\">Open dashboard →</a></section><section class=\"form-card wide danger-zone\" aria-labelledby=\"delete-heading\"><h2 id=\"delete-heading\">Delete website</h2><p class=\"muted\">Permanently delete this website from Owlytics and all its analytics data, including imported history. This cannot be undone.</p><p class=\"muted small\">Remove the Owlytics tracker from your website when you stop using it.</p><details class=\"delete-confirmation\"{open}><summary class=\"button button-danger\">Delete website…</summary><form method=\"post\" action=\"/sites/{id}/delete\"><input type=\"hidden\" name=\"csrf\" value=\"{}\"><label for=\"confirm-domain\">Type <strong>{}</strong> to confirm</label><input id=\"confirm-domain\" name=\"domain\" value=\"{}\" required maxlength=\"253\" autocomplete=\"off\" autocapitalize=\"none\" spellcheck=\"false\"{invalid}>{error}<div class=\"delete-actions\"><button class=\"button button-danger\">Permanently delete website</button><a class=\"button\" href=\"/sites/{id}/settings\">Cancel</a></div></form></details></section></div>",
+            escape(&site.domain),
             escape(&site.domain),
             escape(&snippet),
-            escape(&site.timezone)
+            escape(&site.timezone),
+            escape(&session.csrf),
+            escape(&site.domain),
+            escape(confirmation),
         ),
     )
+}
+
+#[derive(Deserialize)]
+pub(crate) struct DeleteSiteForm {
+    csrf: String,
+    domain: String,
+}
+
+pub(crate) async fn delete(
+    State(app): State<App>,
+    Path(id): Path<i64>,
+    headers: HeaderMap,
+    Form(form): Form<DeleteSiteForm>,
+) -> Response {
+    let session = match owner(&app, &headers).await {
+        Ok(session) => session,
+        Err(response) => return response,
+    };
+    if !auth::same_origin(&headers, &app.origin())
+        || !auth::matches_token(&session.csrf, &form.csrf)
+    {
+        return StatusCode::FORBIDDEN.into_response();
+    }
+    let site = match analytics::site(&app.db, id).await {
+        Ok(Some(site)) => site,
+        Ok(None) => return StatusCode::NOT_FOUND.into_response(),
+        Err(_) => return unavailable(),
+    };
+    if form.domain.trim() != site.domain {
+        let mut response = website_settings(
+            &app,
+            &session,
+            &site,
+            &form.domain,
+            Some("The domain doesn’t match. Type the domain exactly as shown to confirm deletion."),
+        );
+        *response.status_mut() = StatusCode::BAD_REQUEST;
+        return response;
+    }
+    // Foreign keys remove this site's collected and imported data atomically.
+    // Match the domain too in case the site ID was reused after the read.
+    match app
+        .db
+        .call(move |c| {
+            c.execute(
+                "DELETE FROM sites WHERE id=?1 AND domain=?2",
+                rusqlite::params![id, site.domain],
+            )
+        })
+        .await
+    {
+        Ok(0) => StatusCode::NOT_FOUND.into_response(),
+        Ok(_) => Redirect::to("/?deleted=true").into_response(),
+        Err(_) => unavailable(),
+    }
 }
 
 pub(crate) fn link(

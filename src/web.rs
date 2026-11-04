@@ -49,6 +49,7 @@ pub fn router(db: Database, config: Config) -> Router {
         .route("/sites/{id}/filter", get(dashboard::apply_filter))
         .route("/sites/{id}/export", get(dashboard::export))
         .route("/sites/{id}/settings", get(dashboard::settings))
+        .route("/sites/{id}/delete", post(dashboard::delete))
         .route("/sites/{id}/favicon", get(crate::favicons::show))
         .route(
             "/settings",

@@ -3,6 +3,7 @@
 // Install Playwright separately; it is never part of the application runtime.
 import assert from 'node:assert/strict';
 import {selectCalendarRange} from '../tests/calendar-helpers.mjs';
+import {verifySiteDeletion} from '../tests/site-settings-browser.mjs';
 import {spawn, execFileSync} from 'node:child_process';
 import {mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync} from 'node:fs';
 import {createServer} from 'node:http';
@@ -409,6 +410,8 @@ try {
   await assertTheme(restricted, 'dark');
   await assertTheme(restricted, 'light');
   checks.push('Automatic themes work when storage is blocked');
+  await verifySiteDeletion(browser, origin, await owner.storageState(), output);
+  checks.push('Website deletion: settings navigation, confirmation, cancel, wrong-domain recovery, mobile light/dark, and no-JavaScript support');
   await page.getByRole('button', {name: 'Sign out', exact: true}).click();
   await page.waitForURL(`${origin}/login`);
   await page.goto(`${origin}/sites/${site}`);

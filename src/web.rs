@@ -18,6 +18,7 @@ pub(crate) struct App {
     pub(crate) config: Config,
     pub(crate) password_check: Arc<Semaphore>,
     pub(crate) favicon_fetch: Arc<crate::favicons::Fetches>,
+    bots: Arc<crate::bots::Filter>,
 }
 
 impl App {
@@ -39,6 +40,7 @@ pub fn router(db: Database, config: Config) -> Router {
         config,
         password_check: Arc::new(Semaphore::new(1)),
         favicon_fetch: Arc::default(),
+        bots: Arc::default(),
     };
     let mut router = Router::new()
         .route("/up", get(up))
@@ -57,6 +59,7 @@ pub fn router(db: Database, config: Config) -> Router {
         )
         .route("/api/event", post(event))
         .route("/api/engagement", post(engagement))
+        .route("/api/outbound", post(outbound))
         .route(
             "/script.js",
             asset("text/javascript; charset=utf-8", tracker),
@@ -275,9 +278,22 @@ async fn engagement(
     collect_request(app, peer, headers, Payload::Engagement(event)).await
 }
 
+async fn outbound(
+    State(app): State<App>,
+    peer: Option<axum::Extension<ConnectInfo<std::net::SocketAddr>>>,
+    headers: HeaderMap,
+    body: axum::body::Bytes,
+) -> Response {
+    let Ok(event) = serde_json::from_slice::<crate::outbound::Event>(&body) else {
+        return StatusCode::BAD_REQUEST.into_response();
+    };
+    collect_request(app, peer, headers, Payload::Outbound(event)).await
+}
+
 enum Payload {
     Pageview(analytics::Event),
     Engagement(crate::engagement::Event),
+    Outbound(crate::outbound::Event),
 }
 
 async fn collect_request(
@@ -287,8 +303,9 @@ async fn collect_request(
     mut payload: Payload,
 ) -> Response {
     let (valid, domain) = match &mut payload {
-        Payload::Pageview(event) => (event.validate(), &event.domain),
-        Payload::Engagement(event) => (event.validate(), &event.domain),
+        Payload::Pageview(event) => (event.validate(), event.domain.clone()),
+        Payload::Engagement(event) => (event.validate(), event.domain.clone()),
+        Payload::Outbound(event) => (event.validate(), event.domain.clone()),
     };
     if !valid {
         return StatusCode::BAD_REQUEST.into_response();
@@ -301,7 +318,7 @@ async fn collect_request(
         matches!(url.scheme(), "http" | "https")
             && url
                 .host_str()
-                .is_some_and(|host| analytics::matches_domain(host, domain))
+                .is_some_and(|host| analytics::matches_domain(host, &domain))
     }) else {
         return StatusCode::FORBIDDEN.into_response();
     };
@@ -324,26 +341,48 @@ async fn collect_request(
             .get(header::USER_AGENT)
             .and_then(|v| v.to_str().ok())
             .unwrap_or("");
-        let status = match payload {
-            Payload::Pageview(event) => {
-                match analytics::collect(&app.db, event, ip, ua.to_owned(), auth::now).await {
-                    Ok(analytics::Collected::Stored | analytics::Collected::Duplicate) => {
-                        StatusCode::NO_CONTENT
+        let page = match &payload {
+            Payload::Pageview(event) => Some((event.id.as_str(), event.referrer.as_str())),
+            _ => None,
+        };
+        let dropped = app.bots.reason(&app.config, &domain, ip, ua, page);
+        let status = if dropped.is_some() {
+            StatusCode::NO_CONTENT
+        } else {
+            match payload {
+                Payload::Outbound(event) => {
+                    match crate::outbound::collect_request(&app.db, event, ua.to_owned()).await {
+                        Ok(
+                            crate::outbound::Collected::Stored
+                            | crate::outbound::Collected::Duplicate,
+                        ) => StatusCode::NO_CONTENT,
+                        Ok(crate::outbound::Collected::Invalid) => StatusCode::BAD_REQUEST,
+                        Ok(crate::outbound::Collected::PendingPageview) | Err(_) => {
+                            StatusCode::SERVICE_UNAVAILABLE
+                        }
                     }
-                    Ok(analytics::Collected::UnknownSite) => StatusCode::NOT_FOUND,
-                    Ok(analytics::Collected::Invalid) => StatusCode::BAD_REQUEST,
-                    Err(_) => StatusCode::SERVICE_UNAVAILABLE,
                 }
-            }
-            Payload::Engagement(event) => {
-                match crate::engagement::collect(&app.db, event, ua.to_owned(), auth::now).await {
-                    Ok(
-                        crate::engagement::Collected::Stored
-                        | crate::engagement::Collected::Duplicate,
-                    ) => StatusCode::NO_CONTENT,
-                    Ok(crate::engagement::Collected::Invalid) => StatusCode::BAD_REQUEST,
-                    Ok(crate::engagement::Collected::PendingPageview) | Err(_) => {
-                        StatusCode::SERVICE_UNAVAILABLE
+                Payload::Pageview(event) => {
+                    match analytics::collect(&app.db, event, ip, ua.to_owned(), auth::now).await {
+                        Ok(analytics::Collected::Stored | analytics::Collected::Duplicate) => {
+                            StatusCode::NO_CONTENT
+                        }
+                        Ok(analytics::Collected::UnknownSite) => StatusCode::NOT_FOUND,
+                        Ok(analytics::Collected::Invalid) => StatusCode::BAD_REQUEST,
+                        Err(_) => StatusCode::SERVICE_UNAVAILABLE,
+                    }
+                }
+                Payload::Engagement(event) => {
+                    match crate::engagement::collect(&app.db, event, ua.to_owned(), auth::now).await
+                    {
+                        Ok(
+                            crate::engagement::Collected::Stored
+                            | crate::engagement::Collected::Duplicate,
+                        ) => StatusCode::NO_CONTENT,
+                        Ok(crate::engagement::Collected::Invalid) => StatusCode::BAD_REQUEST,
+                        Ok(crate::engagement::Collected::PendingPageview) | Err(_) => {
+                            StatusCode::SERVICE_UNAVAILABLE
+                        }
                     }
                 }
             }
@@ -355,7 +394,13 @@ async fn collect_request(
             )
                 .into_response()
         } else {
-            status.into_response()
+            let mut response = status.into_response();
+            if let Some(reason) = dropped {
+                response
+                    .headers_mut()
+                    .insert("x-owlytics-dropped", HeaderValue::from_static(reason));
+            }
+            response
         }
     };
     if let Ok(value) = origin.origin().ascii_serialization().parse() {

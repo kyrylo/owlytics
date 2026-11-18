@@ -4,11 +4,13 @@ Small, self-hosted web analytics. One Rust executable, one SQLite database,
 as many websites as you need.
 
 See how people find your site and what they read. Visitors, pageviews, traffic
-sources, popular pages, and locations are all there. You can bring your history
-from Plausible, too.
+sources, popular pages, goals (including outbound link clicks), and locations are all there. You can
+bring your history from Plausible, too.
 
 No cookies. No stored raw IP addresses. Owlytics respects Do Not Track and Global
 Privacy Control by default. [More about collection](docs/privacy.md).
+Known bots, referrer spam, hosting-network traffic, and excessive bursts are
+[filtered automatically](docs/bot-filtering.md).
 
 **It's an early beta.** Keep your current analytics running while you try it out.
 
@@ -55,3 +57,4 @@ service manager; Owlytics doesn't load `.env` files.
 
 [MIT](LICENSE). Bundled [icons](docs/licenses/icons.md) and
 [geographic data](docs/licenses/geography.md) have their own licenses.
+Bundled [bot-filter lists](docs/licenses/bot-lists.md) are MIT or CC0 licensed.

@@ -1,0 +1,247 @@
+{
+  "revisions": {
+    "crawlers": "a727b357908004d61ba5758fa6425d379d9a4828",
+    "referrers": "6cd0b655c740da5bb39d98cd1bea88e2e0660e80",
+    "hosting": "858cdb6a73551bfcad15b462edbbe72e9779be95"
+  },
+  "sources": [
+    {
+      "url": "https://raw.githubusercontent.com/monperrus/crawler-user-agents/a727b357908004d61ba5758fa6425d379d9a4828/crawler-user-agents.json",
+      "sha256": "01901da7d1f91ac3dac0fcb64692a591a5e0796821bf59e04e6ed0ceef2f7850"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/matomo-org/referrer-spam-list/6cd0b655c740da5bb39d98cd1bea88e2e0660e80/spammers.txt",
+      "sha256": "f7f48b319dc91c056070e32e019dfaafbf9fe01491dd0b2502c71d4cfffd7cbe"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/ipverse/as-ip-blocks/858cdb6a73551bfcad15b462edbbe72e9779be95/as/16509/aggregated.json",
+      "sha256": "b254f3441c08eeea0b2345bf85dc713c06dd52b340e06acfab34d02acdb0e587"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/ipverse/as-ip-blocks/858cdb6a73551bfcad15b462edbbe72e9779be95/as/14618/aggregated.json",
+      "sha256": "1d31b39cb1be57076f79499103a7f104dafa18439c34499098dd3b1f6b72ad11"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/ipverse/as-ip-blocks/858cdb6a73551bfcad15b462edbbe72e9779be95/as/396982/aggregated.json",
+      "sha256": "655ec527db37e808144318bdc6fbbd229c8452ba4c90deb46edc0d0dc08efcfe"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/ipverse/as-ip-blocks/858cdb6a73551bfcad15b462edbbe72e9779be95/as/14061/aggregated.json",
+      "sha256": "2b7f7b526653fa2fff8ff3bf2bcf83a1c6f248b5cf61327392c8c789129b2d30"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/ipverse/as-ip-blocks/858cdb6a73551bfcad15b462edbbe72e9779be95/as/24940/aggregated.json",
+      "sha256": "06656089b2d0ec6c30352eae3c7e2ff1bc46b214bd70fdacc6fc18e943ee6e96"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/ipverse/as-ip-blocks/858cdb6a73551bfcad15b462edbbe72e9779be95/as/16276/aggregated.json",
+      "sha256": "19678043d03f2e52bd4267adcce72ac9fc44d4e49715f07ed6b3b903f46ef6e4"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/ipverse/as-ip-blocks/858cdb6a73551bfcad15b462edbbe72e9779be95/as/63949/aggregated.json",
+      "sha256": "fc4cfd0673cf411e079cd31e61b56cd933d8e3bfbba06fab4af8c667d1fbfaa4"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/ipverse/as-ip-blocks/858cdb6a73551bfcad15b462edbbe72e9779be95/as/20473/aggregated.json",
+      "sha256": "32d89ebdb5f4acf81b50a7df90a8dd42a39f8262dcd1f19a101b56b8f74d08c2"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/ipverse/as-ip-blocks/858cdb6a73551bfcad15b462edbbe72e9779be95/as/45102/aggregated.json",
+      "sha256": "811327538c697020f1a15daf09cf96ecd55eaccbbd3538ed84a061b400e27e07"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/ipverse/as-ip-blocks/858cdb6a73551bfcad15b462edbbe72e9779be95/as/132203/aggregated.json",
+      "sha256": "ad738779e7343ef3527c022a62c69dab10ac48b73181516aeb67f01a514ad7a9"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/ipverse/as-ip-blocks/858cdb6a73551bfcad15b462edbbe72e9779be95/as/45090/aggregated.json",
+      "sha256": "b8e45a4e867d419966350374c958551ba0d5c17ec88270d74b9acfdc64f8a6c9"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/ipverse/as-ip-blocks/858cdb6a73551bfcad15b462edbbe72e9779be95/as/12876/aggregated.json",
+      "sha256": "0a4f8daf1f048712dd7f6a25e1c85feecd8f535d5f000723b67c9cc5cc8449de"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/monperrus/crawler-user-agents/a727b357908004d61ba5758fa6425d379d9a4828/LICENSE",
+      "sha256": "bd1d54278c29a12c1c3009259965a620c59363b8d7f5740d98d3fc38f319d7a5"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/ipverse/as-ip-blocks/858cdb6a73551bfcad15b462edbbe72e9779be95/LICENSE",
+      "sha256": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/matomo-org/referrer-spam-list/6cd0b655c740da5bb39d98cd1bea88e2e0660e80/composer.json",
+      "sha256": "736792998634f7f0d8b7983f97f5f04acd0500db77805db2b9144f4520bc1fd5"
+    }
+  ],
+  "hosting_providers": [
+    {
+      "asn": 16509,
+      "provider": "Amazon AWS",
+      "metadata": {
+        "handle": "AMAZON-02",
+        "description": "Amazon.com Inc.",
+        "countryCode": "US",
+        "country": "United States",
+        "origin": "authoritative",
+        "category": "hosting",
+        "networkRole": "major_transit"
+      }
+    },
+    {
+      "asn": 14618,
+      "provider": "Amazon AWS",
+      "metadata": {
+        "handle": "AMAZON-AES",
+        "description": "Amazon.com Inc.",
+        "countryCode": "US",
+        "country": "United States",
+        "origin": "authoritative",
+        "category": "hosting",
+        "networkRole": "midsize_transit"
+      }
+    },
+    {
+      "asn": 396982,
+      "provider": "Google Cloud",
+      "metadata": {
+        "handle": "GOOGLE-CLOUD-PLATFORM",
+        "description": "Google LLC",
+        "countryCode": "US",
+        "country": "United States",
+        "origin": "authoritative",
+        "category": "hosting",
+        "networkRole": "stub"
+      }
+    },
+    {
+      "asn": 14061,
+      "provider": "DigitalOcean",
+      "metadata": {
+        "handle": "DIGITALOCEAN-ASN",
+        "description": "DigitalOcean LLC",
+        "countryCode": "US",
+        "country": "United States",
+        "origin": "authoritative",
+        "category": "hosting",
+        "networkRole": "midsize_transit"
+      }
+    },
+    {
+      "asn": 24940,
+      "provider": "Hetzner",
+      "metadata": {
+        "handle": "HETZNER-AS",
+        "description": "Hetzner Online GmbH",
+        "countryCode": "DE",
+        "country": "Germany",
+        "origin": "authoritative",
+        "category": "hosting",
+        "networkRole": "midsize_transit"
+      }
+    },
+    {
+      "asn": 16276,
+      "provider": "OVH",
+      "metadata": {
+        "handle": "OVH",
+        "description": "OVH SAS",
+        "countryCode": "FR",
+        "country": "France",
+        "origin": "authoritative",
+        "category": "hosting",
+        "networkRole": "major_transit"
+      }
+    },
+    {
+      "asn": 63949,
+      "provider": "Linode",
+      "metadata": {
+        "handle": "AKAMAI-LINODE-AP",
+        "description": "Akamai Technologies Inc.",
+        "countryCode": "US",
+        "country": "United States",
+        "origin": "authoritative",
+        "category": "hosting",
+        "networkRole": "content_network"
+      }
+    },
+    {
+      "asn": 20473,
+      "provider": "Vultr",
+      "metadata": {
+        "handle": "AS-VULTR",
+        "description": "The Constant Company LLC",
+        "countryCode": "US",
+        "country": "United States",
+        "origin": "authoritative",
+        "category": "hosting",
+        "networkRole": "major_transit"
+      }
+    },
+    {
+      "asn": 45102,
+      "provider": "Alibaba Cloud",
+      "metadata": {
+        "handle": "ALIBABA-CN-NET",
+        "description": "Alibaba (US) Technology Co. Ltd.",
+        "countryCode": "US",
+        "country": "United States",
+        "origin": "authoritative",
+        "category": "hosting",
+        "networkRole": "content_network"
+      }
+    },
+    {
+      "asn": 132203,
+      "provider": "Tencent Cloud",
+      "metadata": {
+        "handle": "TENCENT-NET-AP-CN",
+        "description": "Shenzhen Tencent Computer Systems Company Limited",
+        "countryCode": "CN",
+        "country": "China",
+        "origin": "authoritative",
+        "category": "hosting",
+        "networkRole": "access_provider"
+      }
+    },
+    {
+      "asn": 45090,
+      "provider": "Tencent Cloud",
+      "metadata": {
+        "handle": "TENCENT-NET-AP",
+        "description": "Shenzhen Tencent Computer Systems Company Limited",
+        "countryCode": "CN",
+        "country": "China",
+        "origin": "authoritative",
+        "category": "hosting",
+        "networkRole": "stub"
+      }
+    },
+    {
+      "asn": 12876,
+      "provider": "Scaleway",
+      "metadata": {
+        "handle": "AS12876",
+        "description": "Scaleway SAS",
+        "countryCode": "FR",
+        "country": "France",
+        "origin": "authoritative",
+        "category": "hosting",
+        "networkRole": "content_network"
+      }
+    }
+  ],
+  "counts": {
+    "crawler_patterns": 1506,
+    "referrer_domains": 2355,
+    "hosting_ranges": 11515
+  },
+  "outputs": {
+    "assets/bot-lists/crawlers.txt": "42f61779ab6800f327a1892e7ce09f6b78a5c438e2166b40c261763f372a37f9",
+    "assets/bot-lists/referrers.txt": "b3717ae329ed68f1db9792f04bb5ff40cfb610f1782a3db752f31883ed73f069",
+    "assets/bot-lists/hosting.txt": "34d9c4a852de1c62a79e7729a1628f0f4b3cdbca1b1c9e672841285391167f68",
+    "docs/licenses/Crawler-User-Agents-MIT.txt": "bd1d54278c29a12c1c3009259965a620c59363b8d7f5740d98d3fc38f319d7a5",
+    "docs/licenses/Bot-Lists-CC0.txt": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499"
+  }
+}

@@ -9,6 +9,9 @@ pub struct Config {
     pub password_hash: String,
     pub trusted_proxies: Vec<ipnet::IpNet>,
     pub respect_gpc: bool,
+    pub filter_datacenters: bool,
+    /// Exceptions to IP filtering only; bot UAs, spam and bursts still filter.
+    pub bot_allowed_ips: Vec<ipnet::IpNet>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -27,6 +30,23 @@ impl Config {
             .unwrap_or_else(|_| "true".into())
             .parse()
             .map_err(|_| ConfigError("OWLYTICS_RESPECT_GPC must be true or false".into()))?;
+        config.filter_datacenters = std::env::var("OWLYTICS_FILTER_DATACENTERS")
+            .unwrap_or_else(|_| "true".into())
+            .parse()
+            .map_err(|_| ConfigError("OWLYTICS_FILTER_DATACENTERS must be true or false".into()))?;
+        config.bot_allowed_ips = std::env::var("OWLYTICS_BOT_ALLOWED_IPS")
+            .unwrap_or_default()
+            .split(',')
+            .filter(|s| !s.trim().is_empty())
+            .map(|s| {
+                s.trim().parse().map_err(|_| {
+                    ConfigError(
+                        "OWLYTICS_BOT_ALLOWED_IPS must contain comma-separated IP networks (CIDR)"
+                            .into(),
+                    )
+                })
+            })
+            .collect::<Result<_, _>>()?;
         config.trusted_proxies = std::env::var("OWLYTICS_TRUSTED_PROXIES")
             .unwrap_or_default()
             .split(',')
@@ -74,6 +94,8 @@ impl Config {
             password_hash: password_hash.into(),
             trusted_proxies: Vec::new(),
             respect_gpc: true,
+            filter_datacenters: true,
+            bot_allowed_ips: Vec::new(),
         })
     }
 

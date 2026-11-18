@@ -67,7 +67,7 @@ pub(crate) fn local_time(zone: Tz, time: chrono::NaiveDateTime) -> i64 {
         .timestamp()
 }
 
-fn boundaries(window: &Window) -> Vec<Bucket> {
+pub(crate) fn boundaries(window: &Window) -> Vec<Bucket> {
     let date = |stamp| {
         chrono::DateTime::from_timestamp(stamp, 0)
             .unwrap()

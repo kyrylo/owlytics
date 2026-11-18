@@ -201,6 +201,8 @@ async fn schema_ten_upgrade_and_both_backup_versions_preserve_all_data() {
     before.extend([
         ("owner_credentials".into(), Vec::new()),
         ("site_favicons".into(), Vec::new()),
+        // Schema 18 starts outbound collection with no invented history.
+        ("outbound_clicks".into(), Vec::new()),
     ]);
     before.sort_by(|a, b| a.0.cmp(&b.0));
     let old_backup = fixture.0.join("backup-v10.sqlite");

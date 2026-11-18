@@ -10,6 +10,7 @@ function browser(options = {}) {
   let next = 1, now = 0;
   const location = {hostname: options.hostname || 'example.com', pathname: '/first', search: options.search || ''};
   const document = {
+    baseURI: 'https://example.com/first',
     currentScript: {src: 'https://stats.example.com/script.js', getAttribute: () => 'example.com', hasAttribute: () => !!options.local},
     visibilityState: 'visible', prerendering: !!options.prerender,
     focused: options.focused ?? true,
@@ -33,6 +34,7 @@ function browser(options = {}) {
   return {context, calls, timers, events, documentEvents, advance: ms => now += ms,
     views: () => calls.filter(c => c.url.endsWith('/api/event')),
     engagement: () => calls.filter(c => c.url.endsWith('/api/engagement')).map(c => JSON.parse(c.body)),
+    outbound: () => calls.filter(c => c.url.endsWith('/api/outbound')).map(c => JSON.parse(c.body)),
     run: () => vm.runInContext(tracker, context)};
 }
 
@@ -305,4 +307,60 @@ test('campaign retries retain the original labels and Android referrals strip pr
   await new Promise(setImmediate);
   b.timers.shift()();
   assert.equal(b.views()[0].body, b.views()[1].body);
+});
+
+function clickLink(b, href, {type = 'click', button = 0} = {}) {
+  const link = {matches: selector => selector === 'a[href],area[href]', getAttribute: () => href};
+  b.documentEvents.get(type)({type, button, composedPath: () => [{}, link, b.context.document]});
+}
+
+test('outbound delegation records sanitized external links without delaying navigation', () => {
+  const b = browser();
+  clickLink(b, 'https://user:password@outside.example/docs?token=secret#private');
+  clickLink(b, '//outside.example/middle', {type: 'auxclick', button: 1});
+  assert.deepEqual(b.outbound().map(e => e.url), ['https://outside.example/docs', 'https://outside.example/middle']);
+  assert.equal(b.outbound()[0].page_id, JSON.parse(b.views()[0].body).id);
+  assert.notEqual(b.outbound()[0].id, b.outbound()[1].id);
+  const request = b.calls.find(c => c.url.endsWith('/api/outbound'));
+  assert.equal(request.keepalive, true);
+  assert.equal(request.credentials, 'omit');
+  assert.equal(request.referrerPolicy, 'no-referrer');
+  assert.equal(b.views().length, 1);
+});
+
+test('outbound excludes internal links, unsupported protocols, oversized paths and right clicks', () => {
+  const b = browser();
+  for (const href of ['/internal', '#fragment', 'https://www.example.com/hello', 'https://EXAMPLE.com.:443/',
+    'mailto:a@outside.example', 'tel:+123', 'javascript:void(0)', 'https://[invalid', 'https://outside.example/' + 'x'.repeat(2048)]) clickLink(b, href);
+  clickLink(b, 'https://outside.example/', {type: 'auxclick', button: 2});
+  clickLink(b, 'https://outside.example/', {type: 'click', button: 1});
+  assert.equal(b.outbound().length, 0);
+  b.documentEvents.get('click')({type: 'click', button: 0, composedPath: () => [{}, b.context.document]});
+  clickLink(b, 'https://shop.example.com/');
+  assert.equal(b.outbound().length, 1, 'Different subdomains are outbound');
+});
+
+test('outbound respects runtime privacy changes and follows SPA pageviews', () => {
+  const b = browser();
+  b.context.location.pathname = '/second';b.context.history.pushState();
+  clickLink(b, 'https://outside.example/');
+  assert.equal(b.outbound()[0].page_id, JSON.parse(b.views()[1].body).id);
+  b.context.navigator.globalPrivacyControl = true;
+  clickLink(b, 'https://outside.example/private');
+  assert.equal(b.outbound().length, 1);
+  const optedIn = browser({respectGpc: false, navigator: {globalPrivacyControl: true}});
+  clickLink(optedIn, 'https://outside.example/');
+  assert.equal(optedIn.outbound().length, 1);
+  optedIn.context.navigator.doNotTrack = '1';clickLink(optedIn, 'https://outside.example/private');
+  assert.equal(optedIn.outbound().length, 1);
+});
+
+test('outbound retries preserve click identity and the originating page', async () => {
+  const b = browser({fetch: () => Promise.resolve({status: 503})});
+  clickLink(b, 'https://outside.example/');
+  await new Promise(setImmediate);
+  b.context.location.pathname = '/second';b.context.history.pushState();
+  const retries = b.timers.splice(0);retries.forEach(retry => retry());
+  assert.equal(b.outbound().length, 2);
+  assert.deepEqual(b.outbound()[0], b.outbound()[1]);
 });

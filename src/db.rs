@@ -5,7 +5,7 @@ use std::{
     time::Duration,
 };
 use tokio::sync::Semaphore;
-pub const SCHEMA_VERSION: i64 = 17;
+pub const SCHEMA_VERSION: i64 = 18;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -154,6 +154,9 @@ impl Database {
         }
         if version < 17 {
             tx.execute_batch(include_str!("owner_settings.sql"))?;
+        }
+        if version < 18 {
+            tx.execute_batch(include_str!("outbound.sql"))?;
         }
         tx.commit()?;
         if let Some(started) = upgrading {

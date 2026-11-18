@@ -109,7 +109,7 @@ type Groups = BTreeMap<String, Rows>;
 // headline metrics/chart plus exact names requested by the primary report;
 // downloads need every dimension. Keep the
 // page dependencies so entrance bounce rates and exit denominators are exact.
-fn dimensions(query: &ReportQuery) -> BTreeSet<&'static str> {
+pub(crate) fn dimensions(query: &ReportQuery) -> BTreeSet<&'static str> {
     let choose = |value: Option<&str>, allowed: &[&'static str], default: &'static str| {
         allowed
             .iter()
@@ -403,6 +403,9 @@ fn build(
     range: &Range,
     query: &ReportQuery,
 ) -> rusqlite::Result<Report> {
+    if query.goal.is_some() {
+        return crate::goal_reports::build(c, site_id, range, query);
+    }
     let _workspace = Workspace::new(c)?;
     let zone: String = c.query_row("SELECT timezone FROM sites WHERE id=?1", [site_id], |r| {
         r.get(0)
@@ -1059,11 +1062,15 @@ fn build(
             })
     });
     let mut result=Report {
+            goal: false,
             generated_at: if query.period.as_deref()==Some("24h") {query.window.map_or(now, |(_,end)|end-1)} else {now},
             realtime:query.period.as_deref()==Some("realtime"),detail_total:0,visitors:totals.visitors,pageviews:totals.pageviews,daily,calendar,
             pages:take("page")?,sources:take("source")?,referrers:take("referrer")?,countries:take("country")?,regions:take("region")?,cities:take("city")?,
             browsers:take("browser")?,browser_versions:take("browser_version")?,operating_systems:take("os")?,os_versions:take("os_version")?,devices:take("device")?,
             entry_pages:take("entry")?,exit_pages:take("exit")?,
+            outbound: if matches!(query.scope, ReportScope::All | ReportScope::Dashboard) && query.comparison_names.is_none() {
+                crate::outbound::report(c, site_id, window, query)?
+            } else { crate::outbound::Report::default() },
             acquisition:crate::acquisition::DIMENSIONS.iter().map(|(key,_)|Ok(((*key).to_owned(),take(key)?))).collect::<rusqlite::Result<_>>()?,
             acquisition_incomplete:acquisition.incomplete,totals,
             timeline,timeline_start,timeline_end,timeline_step,

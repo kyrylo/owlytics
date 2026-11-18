@@ -44,6 +44,8 @@ env:
     OWLYTICS_DATABASE: /data/owlytics.sqlite
     OWLYTICS_URL: https://<%= ENV.fetch("OWLYTICS_HOST") %>
     OWLYTICS_RESPECT_GPC: <%= ENV.fetch("OWLYTICS_RESPECT_GPC", "true").inspect %>
+    OWLYTICS_FILTER_DATACENTERS: <%= ENV.fetch("OWLYTICS_FILTER_DATACENTERS", "true").inspect %>
+    OWLYTICS_BOT_ALLOWED_IPS: <%= ENV.fetch("OWLYTICS_BOT_ALLOWED_IPS", "").inspect %>
     OWLYTICS_TRUSTED_PROXIES: <%= ENV.fetch("OWLYTICS_TRUSTED_PROXIES").tap { |value| raise "Set the Kamal Docker network CIDR" if value.empty? } %>
 
 volumes:

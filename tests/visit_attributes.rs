@@ -249,6 +249,7 @@ async fn fresh_and_upgraded_attribution_preserves_facts_imports_and_backup_resto
     // Schema 17 introduces settings and favicon storage; both start empty.
     unchanged.insert("owner_credentials".into(), Vec::new());
     unchanged.insert("site_favicons".into(), Vec::new());
+    unchanged.insert("outbound_clicks".into(), Vec::new());
     let old_backup = fixture.0.join("old-backup.sqlite");
     storage::backup(&old, &old_backup).unwrap();
     drop(old);

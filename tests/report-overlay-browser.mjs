@@ -22,10 +22,10 @@ export async function checkReportOverlay({context,browser,origin,output}) {
       await page.waitForLoadState('domcontentloaded');
       const modal=page.locator('.expanded-report'), search=page.getByRole('searchbox',{name:'Search report'});
       assert.equal(await page.locator('.report-overlay').count(),1);
-      assert.equal(await page.locator('.report-grid>.report-panel').count(),4,'Keep all four cards behind the report');
+      assert.equal(await page.locator('.report-grid>.report-panel').count(),5,'Keep all five cards behind the report');
       const bounds=await modal.boundingBox();
       assert.ok(bounds.x>=15 && bounds.y>=15 && bounds.x+bounds.width<=width-15 && bounds.y+bounds.height<=885);
-      assert.ok(await page.locator('.report-table-scroll').evaluate(e=>e.scrollHeight>e.clientHeight),'Large tables scroll inside the overlay');
+      assert.ok(await modal.locator('.report-table-scroll').evaluate(e=>e.scrollHeight>e.clientHeight),'Large tables scroll inside the overlay');
       assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
       assert.equal(await page.locator('body').evaluate(e=>getComputedStyle(e).overflow),'hidden');
       assert.equal(await page.locator('.report-search button').isVisible(),!javaScriptEnabled);

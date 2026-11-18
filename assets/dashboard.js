@@ -8,7 +8,7 @@
     compare_match: ['date','weekday']
   };
   const reportPreferences = {
-    metric: ['visitors','visits','pageviews','views_per_visit','bounce_rate','visit_duration','time_on_page','scroll_depth'],
+    metric: ['unique_conversions','total_conversions','conversion_rate','visitors','visits','pageviews','views_per_visit','bounce_rate','visit_duration','time_on_page','scroll_depth'],
     pages_tab: ['page','entry','exit'],
     sources_tab: ['channel','source','utm_medium','utm_source','utm_campaign','utm_content','utm_term'],
     locations_tab: ['map','country','region','city'],

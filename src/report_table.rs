@@ -65,6 +65,7 @@ pub(crate) fn value(row: &Row, column: &str) -> Option<f64> {
                 }
             });
         }
+        "conversion_rate" => Metric::ConversionRate,
         "visitors" => Metric::Visitors,
         "pageviews" => Metric::Pageviews,
         "visits" => Metric::Visits,
@@ -92,7 +93,7 @@ pub(crate) fn display(row: &Row, column: &str) -> String {
         return "—".into();
     };
     match column {
-        "percentage" => format!("{value:.1}%"),
+        "conversion_rate" | "percentage" => format!("{value:.1}%"),
         "bounce_rate" | "exit_rate" | "scroll_depth" => format!("{value:.0}%"),
         "visit_duration" | "time_on_page" => {
             let seconds = value.round() as i64;

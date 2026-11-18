@@ -86,9 +86,9 @@ print(json.dumps({name:list(csv.reader(io.StringIO(z.read(name).decode()))) for 
   const plain=await browser.newContext({storageState,javaScriptEnabled:false});
   try {
     const page=await plain.newPage();await page.goto(base+'&detail=browser');
-    assert.deepEqual((await page.locator('.report-table thead th').allTextContents()).slice(1).map(s=>s.replace(/[↑↓]/g,'').trim()),columns.browser);
-    await page.locator('.report-table').getByRole('link',{name:'Bounce rate',exact:true}).click();
+    assert.deepEqual((await page.locator('.expanded-report .report-table thead th').allTextContents()).slice(1).map(s=>s.replace(/[↑↓]/g,'').trim()),columns.browser);
+    await page.locator('.expanded-report .report-table').getByRole('link',{name:'Bounce rate',exact:true}).click();
     await page.waitForURL(url=>url.searchParams.get('sort')==='bounce_rate');
-    assert.equal(await page.locator('.report-table tbody tr').count(),2);
+    assert.equal(await page.locator('.expanded-report .report-table tbody tr').count(),2);
   } finally {await plain.close();}
 }

@@ -132,7 +132,7 @@ try {
   assert.equal(await metric(page, 'Pageviews'), 0);
   assert.ok(await page.getByRole('heading', {name:'Waiting for your first pageview'}).isVisible());
   assert.ok(await page.getByRole('link', {name:'Install tracker', exact:true}).isVisible());
-  assert.equal(await page.locator('.report-panel').count(), 4);
+  assert.equal(await page.locator('.report-panel').count(), 5);
   await screenshot(page, 'empty-dashboard');
   checks.push('Owner login, rejected password, empty state, website creation, install snippet');
 
@@ -250,7 +250,7 @@ try {
   checks.push('Historical import, native collection, chart, More rows, date range, filter and removal');
   await page.goto(`${origin}/sites/${site}?from=${date(0)}&to=${date(0)}&metric=pageviews&page=%2Fmissing&browser=Chrome`);
   assert.ok(await page.getByRole('heading',{name:'No matching pageviews'}).isVisible());
-  assert.equal(await page.locator('.report-panel').count(),4);
+  assert.equal(await page.locator('.report-panel').count(),5);
   await screenshot(page,'empty-filtered-report');
   await page.getByRole('link',{name:'Clear filters',exact:true}).click();await page.waitForFunction(()=>!document.querySelector('main[aria-busy=true]'));
   assert.equal(await metric(page,'Pageviews'),nativeViews);

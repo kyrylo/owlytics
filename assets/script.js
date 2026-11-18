@@ -9,6 +9,7 @@
   const domain = script.getAttribute("data-domain");
   const endpoint = new URL("/api/event", script.src).href;
   const engagementEndpoint = new URL("/api/engagement", script.src).href;
+  const outboundEndpoint = new URL("/api/outbound", script.src).href;
   const local = /^(localhost|127(?:\.\d{1,3}){3}|0\.0\.0\.0|\[?::1\]?)$/.test(location.hostname) || location.hostname.endsWith(".localhost");
   const disabled = () => navigator.doNotTrack === "1" || (respectGpc && navigator.globalPrivacyControl) || navigator.webdriver;
   if (!domain || disabled() || (local && !script.hasAttribute("data-local"))) return;
@@ -79,21 +80,39 @@
     if (Object.values(tags).some(value => /[\u0000-\u001f\u007f-\u009f]/.test(value)) || new TextEncoder().encode(JSON.stringify(tags)).length > 2048) return;
     return tags;
   }
+  function requestId() {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
+  }
+  function outbound(event) {
+    if (!allowed() || !current || (event.type === "click" ? event.button !== 0 : event.button !== 1)) return;
+    // Delegation covers dynamically inserted links, nested elements and open
+    // shadow roots. Never prevent navigation or wait for the analytics request.
+    const link = event.composedPath().find(node => node.matches?.("a[href],area[href]"));
+    if (!link) return;
+    try {
+      const url = new URL(link.getAttribute("href"), document.baseURI);
+      const host = value => value.toLowerCase().replace(/\.$/, "").replace(/^www\./, "");
+      if (!["http:", "https:"].includes(url.protocol) || host(url.hostname) === host(location.hostname) || host(url.hostname) === host(domain)) return;
+      const destination = url.origin + url.pathname;
+      if (new TextEncoder().encode(destination).length > 2048) return;
+      send(outboundEndpoint, {domain, id: requestId(), page_id: current.id, url: destination});
+    } catch (_) { /* Ignore malformed links; analytics must not affect clicks. */ }
+  }
   function track() {
     if (!allowed() || document.visibilityState === "prerender" || document.prerendering) return;
     const path = location.pathname;
     if (path === previous) return;
     flush(true);
     previous = path;
-    const bytes = new Uint8Array(16);
-    crypto.getRandomValues(bytes);
     let referrer = "";
     try {
       const url = new URL(document.referrer);
       if (["https:", "http:"].includes(url.protocol)) referrer = url.origin + url.pathname;
       else if (url.protocol === "android-app:") referrer = "android-app://" + url.hostname + url.pathname;
     } catch (_) { /* No referrer. */ }
-    const id = Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
+    const id = requestId();
     const visible = foreground();
     current = {id, time: 0, scroll: 0, started: visible ? performance.now() : null, seen: visible, sentTime: -1, sentScroll: -1};
     send(endpoint, {domain, path, referrer, id, campaign: campaign()});
@@ -115,6 +134,8 @@
   addEventListener("focus", visibility);
   document.addEventListener("turbo:load", () => { track(); resume(); });
   document.addEventListener("DOMContentLoaded", scroll);
+  document.addEventListener("click", outbound, true);
+  document.addEventListener("auxclick", outbound, true);
   document.addEventListener("prerenderingchange", track);
   track();
 })();

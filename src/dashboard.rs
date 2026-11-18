@@ -331,6 +331,21 @@ pub(crate) fn link(
 ) -> String {
     let mut query = query.clone();
     if let Some((key, value)) = change {
+        if key == "goal" {
+            query.url = None;
+            query.goal = value.map(str::to_owned);
+            query.metric = if value.is_some() {
+                Metric::UniqueConversions
+            } else {
+                Metric::Visitors
+            };
+        }
+        if matches!(key, "goal" | "url") {
+            query.detail = None;
+            query.search = None;
+            query.sort = None;
+            query.order = None;
+        }
         if key == "period" {
             query.date = None;
             query.interval = None;
@@ -482,6 +497,8 @@ pub(crate) fn link(
         params.append_pair("filter_offset", &offset.to_string());
     }
     for (key, value) in [
+        ("goal", &query.goal),
+        ("url", &query.url),
         ("filter", &query.filter),
         ("filter_mode", &query.filter_mode),
         ("filter_search", &query.filter_search),
@@ -537,7 +554,11 @@ fn compact_metric(metric: Metric, value: Option<f64>) -> String {
     if let Some(value) = value.filter(|_| {
         matches!(
             metric,
-            Metric::Visitors | Metric::Pageviews | Metric::Visits
+            Metric::Visitors
+                | Metric::Pageviews
+                | Metric::Visits
+                | Metric::UniqueConversions
+                | Metric::TotalConversions
         )
     }) {
         compact_number(value as i64)
@@ -596,6 +617,7 @@ fn metric_display(metric: Metric, value: Option<f64>) -> String {
     };
     match metric {
         Metric::ViewsPerVisit => format!("{value:.2}"),
+        Metric::ConversionRate => format!("{value:.1}%"),
         Metric::BounceRate | Metric::ScrollDepth => format!("{value:.0}%"),
         Metric::VisitDuration | Metric::TimeOnPage => {
             let seconds = value.round() as i64;
@@ -725,7 +747,9 @@ fn country_map(
         .copied()
         .max()
         .unwrap_or(0);
-    let metric = if report.breakdown_pageviews {
+    let metric = if report.goal {
+        "conversions"
+    } else if report.breakdown_pageviews {
         "pageviews"
     } else if report.realtime {
         "current visitors"
@@ -734,7 +758,9 @@ fn country_map(
     };
     let mut out = format!(
         "<figure class=\"country-map\"><div class=\"map-canvas\"><svg viewBox=\"0 0 475 335\" role=\"group\" aria-label=\"{} by country\">",
-        if report.breakdown_pageviews {
+        if report.goal {
+            "Conversions"
+        } else if report.breakdown_pageviews {
             "Pageviews"
         } else {
             "Visitors"
@@ -1109,7 +1135,9 @@ fn panel(
     let _ = write!(
         out,
         "<div class=\"report-columns\"><span>{label}</span><span>{}</span></div>",
-        if pageviews {
+        if report.goal {
+            "Conversions"
+        } else if pageviews {
             "Pageviews"
         } else if report.realtime {
             "Current visitors"
@@ -1147,7 +1175,9 @@ fn panel(
                     dimension,
                     row,
                     if pageviews { "pageviews" } else { "visitors" },
-                    if pageviews {
+                    if report.goal {
+                        "Conversions"
+                    } else if pageviews {
                         "Pageviews"
                     } else if *dimension == "entry" {
                         "Unique entrances"
@@ -1162,7 +1192,7 @@ fn panel(
             .unwrap_or_else(|| format!("<strong>{}</strong>", compact_number(count(row))));
         let _ = write!(
             out,
-            "<a class=\"data-row\" href=\"{}\" title=\"{} · {} pageviews\"><svg class=\"row-bar\" aria-hidden=\"true\" preserveAspectRatio=\"none\"><rect width=\"{:.2}%\" height=\"100%\" rx=\"3\"/></svg><span class=\"row-label\">{image}{}</span>{value}<span class=\"row-percentage\">{percentage}</span></a>",
+            "<a class=\"data-row\" href=\"{}\" title=\"{} · {} {}\"><svg class=\"row-bar\" aria-hidden=\"true\" preserveAspectRatio=\"none\"><rect width=\"{:.2}%\" height=\"100%\" rx=\"3\"/></svg><span class=\"row-label\">{image}{}</span>{value}<span class=\"row-percentage\">{percentage}</span></a>",
             escape(&link(
                 site,
                 range,
@@ -1171,6 +1201,11 @@ fn panel(
             )),
             escape(&name),
             number(row.pageviews),
+            if report.goal {
+                "conversions"
+            } else {
+                "pageviews"
+            },
             count(row) as f64 / max * 76.,
             escape(&name)
         );
@@ -1211,7 +1246,15 @@ fn expanded_table(
         "<div class=\"report-table-scroll\" tabindex=\"0\" role=\"region\" aria-label=\"{} report\"><table class=\"report-table\"><thead><tr>",
         escape(label)
     );
-    let columns = crate::report_table::columns(dimension, report.breakdown_pageviews);
+    let columns = if report.goal {
+        vec![
+            ("visitors", "Uniques"),
+            ("pageviews", "Total"),
+            ("conversion_rate", "CR"),
+        ]
+    } else {
+        crate::report_table::columns(dimension, report.breakdown_pageviews)
+    };
     let sort = query
         .sort
         .as_deref()
@@ -1595,7 +1638,9 @@ fn chart(
     for i in (0..=ticks).rev() {
         let value = step * i as f64;
         let label = match metric {
-            Metric::BounceRate | Metric::ScrollDepth => format!("{value:.0}%"),
+            Metric::BounceRate | Metric::ScrollDepth | Metric::ConversionRate => {
+                format!("{value:.0}%")
+            }
             Metric::ViewsPerVisit => format!("{value:.1}"),
             Metric::VisitDuration | Metric::TimeOnPage => format!("{value:.0}s"),
             _ => compact_number(value.round() as i64),
@@ -1910,7 +1955,7 @@ async fn resolve_range(
 ) -> Result<Range, crate::db::Error> {
     if query.period.as_deref() == Some("realtime") {
         query.interval = Some("minute".into());
-        if !matches!(query.metric, Metric::Visitors | Metric::Pageviews) {
+        if query.goal.is_none() && !matches!(query.metric, Metric::Visitors | Metric::Pageviews) {
             query.metric = Metric::Visitors;
         }
     }
@@ -2863,6 +2908,7 @@ pub(crate) async fn show(
         previous.as_ref().map(|report| (report, &previous_range)),
     ));
     body.push_str("</div></div>");
+    body.push_str(&crate::outbound_panel::filters(&site, &range, &query));
     let clear = link(&site, &range, &query.without_filters(), None);
     let options = match crate::filter_controls::suggestions(&app.db, &site, &range, &query).await {
         Ok(options) => options,
@@ -2901,7 +2947,9 @@ pub(crate) async fn show(
             "<p class=\"import-note\">Comparison shows collected data only. Historical data is excluded.</p>"
         });
     }
-    body.push_str(if report.realtime {
+    body.push_str(if report.goal && !report.realtime {
+        "<section class=\"panel overview\"><div class=\"metrics metrics-goals\">"
+    } else if report.realtime {
         "<section class=\"panel overview\"><div class=\"metrics metrics-realtime\">"
     } else {
         "<section class=\"panel overview\"><div class=\"metrics\">"
@@ -2914,7 +2962,13 @@ pub(crate) async fn show(
             compact_number(report.current_visitors)
         );
     }
-    let metrics = if report.realtime {
+    let metrics = if report.goal {
+        vec![
+            (Metric::UniqueConversions, "Unique conversions"),
+            (Metric::TotalConversions, "Total conversions"),
+            (Metric::ConversionRate, "Conversion rate"),
+        ]
+    } else if report.realtime {
         vec![
             (Metric::Visitors, "Unique visitors (last 30 min)"),
             (Metric::Pageviews, "Total pageviews (last 30 min)"),
@@ -2996,7 +3050,9 @@ pub(crate) async fn show(
     }
     body.push_str("</div>");
     if report.pageviews == 0 && report.visitors == 0 && !report.realtime {
-        let (message, label, target) = if query.filtered() {
+        let (message, label, target) = if report.goal {
+            ("No matching conversions", "Clear filters", clear)
+        } else if query.filtered() {
             ("No matching pageviews", "Clear filters", clear)
         } else if !report.has_data {
             (
@@ -3159,6 +3215,12 @@ pub(crate) async fn show(
         &query,
         &report,
         table_comparison.as_ref(),
+    ));
+    body.push_str(&crate::outbound_panel::render(
+        &site,
+        &range,
+        &query,
+        &report.outbound,
     ));
     if previous.is_some() {
         body.push_str("<div id=\"row-comparison\" class=\"row-tooltip\" role=\"tooltip\" hidden><div class=\"row-tooltip-heading\"><strong></strong><button type=\"button\" aria-label=\"Close comparison\" hidden>×</button></div><span class=\"row-tooltip-metric\"></span><dl><div><dt class=\"row-current-date\"></dt><dd class=\"row-current-value\"></dd></div><div><dt class=\"row-previous-date\"></dt><dd class=\"row-previous-value\"></dd></div></dl><small class=\"row-tooltip-change\"></small></div>");

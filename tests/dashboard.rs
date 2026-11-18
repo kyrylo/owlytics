@@ -1055,7 +1055,7 @@ async fn export_requires_owner_and_respects_segment_without_table_pagination() {
             .contains("owlytics-example.com-2026-10-27-2026-10-27.zip")
     );
     let mut archive = zip_body(response).await;
-    assert_eq!(archive.len(), 22);
+    assert_eq!(archive.len(), 24);
     for name in [
         "channels.csv",
         "utm_mediums.csv",
@@ -1981,4 +1981,64 @@ async fn calendar_navigation_and_chart_links_preserve_the_audience_and_exported_
     assert!(today.contains("aria-disabled=\"true\" aria-label=\"Following day\""));
     let invalid = request(&app, "/sites/1?period=month&date=2023-02-29", &cookie, None).await;
     assert_eq!(invalid.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn outbound_report_is_owner_only_escaped_filterable_and_exported() {
+    let (app, db, cookie, _) = fixture().await;
+    export_fixture(&db).await;
+    db.call(|c| {
+        c.execute("INSERT INTO outbound_clicks(site_id,event_id,request_id,received_at,url) SELECT 1,id,zeroblob(16),1793059201,'https://outside.example/<script>&x' FROM events WHERE path='/page/105' LIMIT 1",[])?;
+        Ok(())
+    }).await.unwrap();
+    let base = "/sites/1?from=2026-10-27&to=2026-10-27&goal=Outbound+Link%3A+Click&detail=outbound&compare=off";
+    assert_eq!(
+        request(&app, base, "", None).await.status(),
+        StatusCode::SEE_OTHER
+    );
+    let html = body(request(&app, base, &cookie, None).await).await;
+    assert!(html.contains("Outbound Link: Click"));
+    assert!(html.contains("Unique conversions"));
+    assert!(html.contains("https://outside.example/&lt;script&gt;&amp;x"));
+    assert!(!html.contains("https://outside.example/<script>"));
+    assert!(html.contains("rel=\"noopener noreferrer\""));
+    assert!(html.contains("page=%2Fpage%2F105"));
+    assert!(html.contains("1–1 of 1"));
+    let html = body(request(&app, &format!("{base}&page=%2Fmissing"), &cookie, None).await).await;
+    assert!(html.contains("No matching results"));
+    let mut zip=zip_body(request(&app,"/sites/1/export?from=2026-10-27&to=2026-10-27&detail=outbound&search=missing&offset=50",&cookie,None).await).await;
+    let page_rows = csv_rows(&mut zip, "pages.csv");
+    assert_eq!(
+        page_rows[0],
+        vec![
+            "page",
+            "unique_conversions",
+            "total_conversions",
+            "conversion_rate"
+        ]
+    );
+    assert_eq!(page_rows[1], vec!["/page/105", "1", "1", "100.00"]);
+    let rows = csv_rows(&mut zip, "custom_props.csv");
+    assert_eq!(
+        rows[0],
+        vec![
+            "goal",
+            "property",
+            "value",
+            "unique_conversions",
+            "total_conversions",
+            "conversion_rate"
+        ]
+    );
+    assert_eq!(
+        rows[1],
+        vec![
+            "Outbound Link: Click",
+            "url",
+            "https://outside.example/<script>&x",
+            "1",
+            "1",
+            "0.94"
+        ]
+    );
 }

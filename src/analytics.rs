@@ -192,29 +192,10 @@ pub fn client_ip(
 }
 
 pub fn user_agent(value: &str) -> Option<(&'static str, &'static str)> {
-    if value.is_empty() || value.len() > 1024 {
+    if crate::bots::user_agent(value) {
         return None;
     }
     let ua = value.to_ascii_lowercase();
-    if [
-        "bot",
-        "spider",
-        "crawl",
-        "headless",
-        "lighthouse",
-        "pagespeed",
-        "curl/",
-        "wget/",
-        "python-",
-        "preview",
-        "monitor",
-        "facebookexternalhit",
-    ]
-    .iter()
-    .any(|part| ua.contains(part))
-    {
-        return None;
-    }
     let browser = if ua.contains("edg/") || ua.contains("edga/") || ua.contains("edgios/") {
         "Edge"
     } else if ua.contains("opr/") || ua.contains("opera") {
@@ -354,6 +335,9 @@ pub async fn collect(
     if !event.validate() {
         return Ok(Collected::Invalid);
     }
+    if crate::bots::referrer(&event.referrer) {
+        return Ok(Collected::Duplicate);
+    }
     let Some((browser, device)) = user_agent(&ua) else {
         return Ok(Collected::Duplicate);
     };
@@ -395,6 +379,12 @@ pub async fn collect(
 pub enum Metric {
     #[default]
     Visitors,
+    #[serde(rename = "unique_conversions")]
+    UniqueConversions,
+    #[serde(rename = "total_conversions")]
+    TotalConversions,
+    #[serde(rename = "conversion_rate")]
+    ConversionRate,
     Pageviews,
     Visits,
     #[serde(rename = "views_per_visit")]
@@ -412,6 +402,9 @@ pub enum Metric {
 impl Metric {
     pub fn name(self) -> &'static str {
         match self {
+            Self::UniqueConversions => "Unique conversions",
+            Self::TotalConversions => "Total conversions",
+            Self::ConversionRate => "Conversion rate",
             Self::Visitors => "Visitors",
             Self::Pageviews => "Pageviews",
             Self::Visits => "Total visits",
@@ -425,6 +418,9 @@ impl Metric {
 
     pub fn key(self) -> &'static str {
         match self {
+            Self::UniqueConversions => "unique_conversions",
+            Self::TotalConversions => "total_conversions",
+            Self::ConversionRate => "conversion_rate",
             Self::Visitors => "visitors",
             Self::Pageviews => "pageviews",
             Self::Visits => "visits",
@@ -437,6 +433,15 @@ impl Metric {
     }
     pub fn value(self, row: &Row) -> f64 {
         match self {
+            Self::UniqueConversions => row.visitors as f64,
+            Self::TotalConversions => row.pageviews as f64,
+            Self::ConversionRate => {
+                if row.visits > 0 {
+                    100. * row.visitors as f64 / row.visits as f64
+                } else {
+                    0.
+                }
+            }
             Self::Visitors => row.visitors as f64,
             Self::Pageviews => row.pageviews as f64,
             Self::Visits => row.visits as f64,
@@ -512,6 +517,8 @@ pub struct ReportQuery {
     pub date: Option<String>,
     pub from: Option<String>,
     pub to: Option<String>,
+    pub goal: Option<String>,
+    pub url: Option<String>,
     pub page: Option<String>,
     pub source: Option<String>,
     pub referrer: Option<String>,
@@ -633,6 +640,21 @@ impl ReportQuery {
             .collect()
     }
     pub(crate) fn normalize_locations(&mut self) {
+        if self.detail.as_deref() == Some("outbound") && self.goal.is_none() {
+            self.goal = Some(crate::outbound::GOAL.into());
+        }
+        self.metric = match (self.goal.is_some(), self.metric) {
+            (
+                true,
+                Metric::UniqueConversions | Metric::TotalConversions | Metric::ConversionRate,
+            ) => self.metric,
+            (true, _) => Metric::UniqueConversions,
+            (
+                false,
+                Metric::UniqueConversions | Metric::TotalConversions | Metric::ConversionRate,
+            ) => Metric::Visitors,
+            _ => self.metric,
+        };
         for (key, field) in [("region", &mut self.region), ("city", &mut self.city)] {
             if let Some(value) = field {
                 *value = crate::geography::location_key(key, value);
@@ -676,6 +698,8 @@ impl ReportQuery {
             filter_op: None,
             filter_search: None,
             filter_offset: None,
+            goal: None,
+            url: None,
             page: None,
             source: None,
             referrer: None,
@@ -692,7 +716,16 @@ impl ReportQuery {
             offset: None,
             ..self.clone()
         };
+        if matches!(query.detail.as_deref(), Some("outbound" | "goals")) {
+            query.detail = None;
+            query.search = None;
+            query.sort = None;
+            query.order = None;
+        }
         query.metric = match query.metric {
+            Metric::UniqueConversions | Metric::TotalConversions | Metric::ConversionRate => {
+                Metric::Visitors
+            }
             Metric::ScrollDepth => Metric::ViewsPerVisit,
             Metric::TimeOnPage => Metric::VisitDuration,
             metric => metric,
@@ -767,6 +800,16 @@ impl ReportQuery {
 
     pub fn range(&self, today: NaiveDate) -> Result<Range, &'static str> {
         self.validate_filters()?;
+        if self
+            .goal
+            .as_deref()
+            .is_some_and(|g| g != crate::outbound::GOAL)
+            || self.url.as_deref().is_some_and(|u| {
+                self.goal.is_none() || u.len() > 2048 || u.chars().any(char::is_control)
+            })
+        {
+            return Err("Invalid goal filter.");
+        }
         if let (Some(key), Some(operator)) = (&self.filter, self.filter_op)
             && !crate::filters::operators(key).contains(&operator)
         {
@@ -897,6 +940,9 @@ impl ReportQuery {
             !matches!(
                 v,
                 "name"
+                    | "conversion_rate"
+                    | "clicks"
+                    | "page"
                     | "percentage"
                     | "visitors"
                     | "pageviews"
@@ -921,6 +967,8 @@ impl ReportQuery {
                     && !matches!(
                         v,
                         "page"
+                            | "outbound"
+                            | "goals"
                             | "entry"
                             | "exit"
                             | "source"
@@ -967,7 +1015,8 @@ impl ReportQuery {
     }
 
     pub fn filtered(&self) -> bool {
-        !self.filters.is_empty()
+        self.goal.is_some()
+            || !self.filters.is_empty()
             || [
                 &self.page,
                 &self.source,
@@ -1062,6 +1111,7 @@ impl Row {
             return false;
         }
         let fields = match metric {
+            Metric::UniqueConversions | Metric::TotalConversions | Metric::ConversionRate => 0,
             Metric::Visitors => 1,
             Metric::Pageviews => 0,
             Metric::Visits | Metric::ViewsPerVisit => 2,
@@ -1139,6 +1189,8 @@ pub async fn site_overviews(
 
 #[derive(Debug, Default)]
 pub struct Report {
+    /// Conversion rows are used instead of traffic rows.
+    pub goal: bool,
     /// Chart observation time; rolling requests retain their window's clock.
     pub generated_at: i64,
     pub realtime: bool,
@@ -1163,6 +1215,7 @@ pub struct Report {
     pub os_versions: Vec<Row>,
     pub entry_pages: Vec<Row>,
     pub exit_pages: Vec<Row>,
+    pub outbound: crate::outbound::Report,
     pub totals: Row,
     pub current_visitors: i64,
     pub timeline: Vec<crate::timeline::Bucket>,

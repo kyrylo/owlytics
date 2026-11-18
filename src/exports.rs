@@ -69,6 +69,9 @@ pub(crate) fn archive(
     page_filtered: bool,
     interval: Option<&str>,
 ) -> Result<Vec<u8>, Error> {
+    if report.goal {
+        return goal_archive(site, range, report);
+    }
     let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
     let options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
     let headers = if report.realtime {
@@ -189,6 +192,7 @@ pub(crate) fn archive(
         }
         csv.flush()?;
     }
+    goal_files(&mut zip, report)?;
     for (file, dimension, rows) in [
         ("pages", "page", report.pages.as_slice()),
         ("entry_pages", "entry", &report.entry_pages),
@@ -273,7 +277,7 @@ pub(crate) fn archive(
     zip.start_file("readme.txt", options)?;
     write!(
         zip,
-        "Owlytics dashboard export\nSite: {}\nTimezone: {}\nDates: {} to {} (inclusive)\n\nReports respect dashboard date and audience filters. Report search, pagination, chart metric and comparison do not restrict the export.\nPage reports: up to 100 rows each. Other breakdowns: up to 300 rows each, sorted by visitors (pageviews for older exports without visitors).\nRates are percentages; durations are seconds. Empty numeric cells mean the historical aggregate is unavailable.\nImported history included: {}\nImported history excluded by filters or rolling window: {}\n\nThis is a dashboard snapshot. Use the backup command for full-fidelity backup and restore.\n",
+        "Owlytics dashboard export\nSite: {}\nTimezone: {}\nDates: {} to {} (inclusive)\n\nReports respect dashboard date and audience filters. Report search, pagination, chart metric and comparison do not restrict the export.\nPage reports: up to 100 rows each. Other breakdowns: up to 300 rows each, sorted by visitors (pageviews for older exports without visitors).\nGoal conversions and url properties: up to 300 URLs, sorted by unique conversions; collected data only.\nRates are percentages; durations are seconds. Empty numeric cells mean the historical aggregate is unavailable.\nImported history included: {}\nImported history excluded by filters or rolling window: {}\n\nThis is a dashboard snapshot. Use the backup command for full-fidelity backup and restore.\n",
         site.domain,
         site.timezone,
         range.from,
@@ -358,4 +362,159 @@ mod tests {
         assert_eq!(cell("/docs?q=1"), "/docs?q=1");
         assert_eq!(cell("Google"), "Google");
     }
+}
+
+fn goal_values(row: &Row) -> [String; 3] {
+    [
+        row.visitors.to_string(),
+        row.pageviews.to_string(),
+        format!("{:.2}", Metric::ConversionRate.value(row)),
+    ]
+}
+fn goal_files(zip: &mut ZipWriter<Cursor<Vec<u8>>>, report: &Report) -> Result<(), Error> {
+    let options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
+    zip.start_file("conversions.csv", options)?;
+    {
+        let mut csv = csv::Writer::from_writer(&mut *zip);
+        csv.write_record([
+            "goal",
+            "unique_conversions",
+            "total_conversions",
+            "conversion_rate",
+        ])?;
+        if report.outbound.clicks > 0 {
+            csv.write_record(
+                [crate::outbound::GOAL.to_owned()]
+                    .into_iter()
+                    .chain(goal_values(&Row {
+                        visitors: report.outbound.visitors,
+                        pageviews: report.outbound.clicks,
+                        visits: report.outbound.eligible,
+                        ..Default::default()
+                    })),
+            )?;
+        }
+        csv.flush()?;
+    }
+    zip.start_file("custom_props.csv", options)?;
+    {
+        let mut csv = csv::Writer::from_writer(&mut *zip);
+        csv.write_record([
+            "goal",
+            "property",
+            "value",
+            "unique_conversions",
+            "total_conversions",
+            "conversion_rate",
+        ])?;
+        for row in &report.outbound.rows {
+            csv.write_record(
+                [
+                    crate::outbound::GOAL.to_owned(),
+                    "url".into(),
+                    cell(&row.url),
+                ]
+                .into_iter()
+                .chain(goal_values(&Row {
+                    visitors: row.visitors,
+                    pageviews: row.clicks,
+                    visits: report.outbound.eligible,
+                    ..Default::default()
+                })),
+            )?;
+        }
+        csv.flush()?;
+    }
+    Ok(())
+}
+fn goal_archive(site: &Site, range: &Range, report: &Report) -> Result<Vec<u8>, Error> {
+    let options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
+    let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
+    goal_files(&mut zip, report)?;
+    zip.start_file("summary.csv", options)?;
+    {
+        let mut csv = csv::Writer::from_writer(&mut zip);
+        csv.write_record([
+            "site",
+            "from",
+            "to",
+            "goal",
+            "unique_conversions",
+            "total_conversions",
+            "conversion_rate",
+        ])?;
+        csv.write_record(
+            [
+                cell(&site.domain),
+                range.from.to_string(),
+                range.to.to_string(),
+                crate::outbound::GOAL.into(),
+            ]
+            .into_iter()
+            .chain(goal_values(&report.totals)),
+        )?;
+        csv.flush()?;
+    }
+    zip.start_file("visitors.csv", options)?;
+    {
+        let mut csv = csv::Writer::from_writer(&mut zip);
+        csv.write_record([
+            "date",
+            "unique_conversions",
+            "total_conversions",
+            "conversion_rate",
+        ])?;
+        if report.timeline.is_empty() {
+            for row in report.calendar.as_ref().unwrap_or(&report.daily) {
+                csv.write_record([row.name.clone()].into_iter().chain(goal_values(row)))?;
+            }
+        } else {
+            let zone = site.timezone.parse::<chrono_tz::Tz>().unwrap();
+            for b in &report.timeline {
+                csv.write_record(
+                    [chrono::DateTime::from_timestamp(b.start, 0)
+                        .unwrap()
+                        .with_timezone(&zone)
+                        .to_rfc3339()]
+                    .into_iter()
+                    .chain(goal_values(&b.completed)),
+                )?;
+            }
+        }
+        csv.flush()?;
+    }
+    for (key, _) in crate::reports::DIMENSIONS
+        .iter()
+        .copied()
+        .chain([("entry", ""), ("exit", "")])
+    {
+        let file = match key {
+            "page" => "pages".to_owned(),
+            "entry" => "entry_pages".into(),
+            "exit" => "exit_pages".into(),
+            "country" => "countries".into(),
+            "city" => "cities".into(),
+            "os" => "operating_systems".into(),
+            "source" => "sources".into(),
+            "referrer" => "referrers".into(),
+            other => format!("{other}s"),
+        };
+        zip.start_file(format!("{file}.csv"), options)?;
+        let mut csv = csv::Writer::from_writer(&mut zip);
+        csv.write_record([
+            key,
+            "unique_conversions",
+            "total_conversions",
+            "conversion_rate",
+        ])?;
+        for row in report.rows(key) {
+            csv.write_record(
+                [cell(&crate::report_table::label(key, &row.name))]
+                    .into_iter()
+                    .chain(goal_values(row)),
+            )?;
+        }
+        csv.flush()?;
+    }
+    Ok(zip.finish()?.into_inner())
 }

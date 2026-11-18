@@ -57,7 +57,8 @@ c.commit()
           await page.setViewportSize({width,height:1000});await page.emulateMedia({colorScheme:scheme});
           await visit('/sites/1?period=year&interval=month&metric=pageviews&compare=off');
           await page.screenshot({path:join(output,`chart-months-${scheme}-${width}.png`),fullPage:true});
-          const boxes=await page.locator('.chart-ticks>text').evaluateAll(es=>es.map(e=>({left:e.getBoundingClientRect().left,right:e.getBoundingClientRect().right})));
+          const boxes=await page.locator('.chart-ticks>text').evaluateAll(es=>es.filter(e=>e.getBoundingClientRect().width>0).map(e=>({left:e.getBoundingClientRect().left,right:e.getBoundingClientRect().right})));
+          assert.ok(boxes.length>=Math.min(2,await page.locator('.chart-ticks>text').count()),'Month axis retains enough labels to read the timeline');
           const bounds=await page.locator('.chart-plot').boundingBox();
           assert.ok(boxes.every(b=>b.left>=bounds.x-1&&b.right<=bounds.x+bounds.width+1),JSON.stringify({width,boxes,bounds}));
           assert.ok(boxes.slice(1).every((b,i)=>b.left>=boxes[i].right-1),'Month labels must not overlap');

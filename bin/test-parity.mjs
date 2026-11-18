@@ -81,7 +81,9 @@ c.commit()
 `,database]);
  // Detached keepalive requests use Chromium's process User-Agent, so a
  // context-only override would let the bot filter discard unload measurements.
- browser=await chromium.launch({headless:true,args:['--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36'],...(process.env.OWLYTICS_BROWSER?{executablePath:process.env.OWLYTICS_BROWSER}:{})});
+ // Use full Chromium's headless mode: headless shell 151 stalls cross-origin
+ // popup navigation in the outbound fixture while regular Chromium succeeds.
+ browser=await chromium.launch({channel:'chromium',headless:true,args:['--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36'],...(process.env.OWLYTICS_BROWSER?{executablePath:process.env.OWLYTICS_BROWSER}:{})});
  const context=await browser.newContext({viewport:{width:1440,height:1050},colorScheme:'light',locale:'en-GB'});const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
  page.on('console',message=>{if(message.type()==='error' && /Content Security Policy/.test(message.text()))errors.push(message.text());});
  await page.goto(`${origin}/login`);await page.getByLabel('Password',{exact:true}).fill(password);await page.getByRole('button',{name:'Sign in',exact:true}).click();await page.waitForURL(`${origin}/`);

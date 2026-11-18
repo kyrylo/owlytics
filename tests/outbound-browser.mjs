@@ -70,13 +70,24 @@ c=sqlite3.connect(sys.argv[1]);print(json.dumps(c.execute("SELECT o.url,e.path,C
     await expanded.getByRole('link',{name:'Total',exact:false}).click();
     await dashboard.waitForURL(url=>url.searchParams.get('sort')==='clicks'&&url.searchParams.get('order')==='asc');
     assert.equal(await expanded.locator('thead th').nth(2).getAttribute('aria-sort'),'ascending');
-    for (const [width,theme] of [[1440,'light'],[390,'light'],[390,'dark']]) {
+    for (const [width,theme] of [[1440,'light'],[390,'light'],[390,'dark'],[320,'light'],[320,'dark']]) {
       await dashboard.setViewportSize({width,height:950});await dashboard.emulateMedia({colorScheme:theme});
       await dashboard.screenshot({path:join(output,`outbound-${width}-${theme}.png`),fullPage:true});
-      assert.equal(await dashboard.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
+      assert.equal(await dashboard.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true,`Expanded outbound report fits ${width}px`);
       assert.equal(await expanded.locator('tbody a').first().isVisible(),true);
     }
     await dashboard.keyboard.press('Escape');await dashboard.waitForURL(url=>!url.searchParams.has('detail'));
+    for(const width of [390,320]) {
+      await dashboard.setViewportSize({width,height:950});
+      assert.equal(await dashboard.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true,`Goal dashboard fits ${width}px`);
+      const labels=await dashboard.locator('.metrics-goals .metric>span').evaluateAll(es=>es.map(e=>{
+        const range=document.createRange();range.selectNodeContents(e);
+        const text=range.getBoundingClientRect(),metric=e.parentElement.getBoundingClientRect();
+        return {left:text.left,right:text.right,start:metric.left,end:metric.right};
+      }));
+      assert.ok(labels.every(b=>b.left>=b.start-1&&b.right<=b.end+1),`Goal labels fit their cards at ${width}px`);
+      await dashboard.screenshot({path:join(output,`outbound-dashboard-${width}.png`),fullPage:true});
+    }
     await dashboard.setViewportSize({width:1440,height:1000});await dashboard.emulateMedia({colorScheme:'light'});
     await dashboard.screenshot({path:join(output,'outbound-dashboard.png'),fullPage:true});
     await panel.locator('tbody th a').first().click();

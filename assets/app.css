@@ -501,4 +501,6 @@ body:has(.report-overlay) { overflow:hidden; }
 .outbound-more{display:block;text-align:center;font-size:.8rem;padding-top:1rem}
 .goal-property{margin-left:auto;padding:.8rem;font-size:.8rem;color:var(--muted)}
 .goal-filters{display:flex;gap:.5rem;flex-wrap:wrap;margin:0 0 1rem}.goal-filter-value{padding:.4rem .5rem;overflow-wrap:anywhere;max-width:280px}.metrics-goals{grid-template-columns:repeat(3,minmax(0,1fr))}
+.metrics-goals .metric{white-space:normal}
+@media(max-width:1023px){.metrics-goals{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:700px){.panel-outbound{width:100%}.outbound-table th,.outbound-table td{padding:.65rem .3rem;font-size:.72rem}.outbound-table thead th{font-size:.63rem;white-space:normal}}
